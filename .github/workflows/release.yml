@@ -1,0 +1,44 @@
+name: Flutter Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # checkout
+      - uses: actions/checkout@v4
+
+      # flutter install
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # extract version from git tag
+      - name: Extract version
+        id: ver
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # update pubspec.yaml version
+      - name: Set pubspec version
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.ver.outputs.VERSION }}+${{ github.run_number }}/" pubspec.yaml
+
+      # deps
+      - run: flutter pub get
+
+      # build release apk
+      - run: flutter build apk --release
+
+      # create github release + attach apk
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
