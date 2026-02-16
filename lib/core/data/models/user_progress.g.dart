@@ -28,6 +28,7 @@ class UserProgressAdapter extends TypeAdapter<UserProgress> {
       securityPin: fields[9] as String?,
       lockDurationMinutes: fields[11] as int,
       themeMode: fields[12] as String,
+      startDate: fields[13] as DateTime?,
       dailyVolume: (fields[3] as Map?)?.map((dynamic k, dynamic v) =>
           MapEntry(k as int, (v as List).cast<int>())),
       baselineReps: (fields[4] as Map?)?.cast<String, int>(),
@@ -37,7 +38,7 @@ class UserProgressAdapter extends TypeAdapter<UserProgress> {
   @override
   void write(BinaryWriter writer, UserProgress obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.currentDay)
       ..writeByte(1)
@@ -63,7 +64,9 @@ class UserProgressAdapter extends TypeAdapter<UserProgress> {
       ..writeByte(11)
       ..write(obj.lockDurationMinutes)
       ..writeByte(12)
-      ..write(obj.themeMode);
+      ..write(obj.themeMode)
+      ..writeByte(13)
+      ..write(obj.startDate);
   }
 
   @override

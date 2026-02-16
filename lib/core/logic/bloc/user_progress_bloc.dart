@@ -110,6 +110,7 @@ class UserProgressBloc extends Bloc<UserProgressEvent, UserProgressState> {
       lockDurationMinutes:
           event.lockDurationMinutes ?? state.progress.lockDurationMinutes,
       themeMode: event.themeMode ?? state.progress.themeMode,
+      startDate: state.progress.startDate,
     );
     _box.put('current', newState);
     emit(UserProgressState(newState));
@@ -142,6 +143,7 @@ class UserProgressBloc extends Bloc<UserProgressEvent, UserProgressState> {
       biometricEnabled: state.progress.biometricEnabled,
       lockDurationMinutes: state.progress.lockDurationMinutes,
       themeMode: state.progress.themeMode,
+      startDate: state.progress.startDate,
     );
 
     _box.put('current', newState);
@@ -166,6 +168,7 @@ class UserProgressBloc extends Bloc<UserProgressEvent, UserProgressState> {
       biometricEnabled: state.progress.biometricEnabled,
       lockDurationMinutes: state.progress.lockDurationMinutes,
       themeMode: state.progress.themeMode,
+      startDate: state.progress.startDate ?? DateTime.now(),
     );
 
     _box.put('current', newState);

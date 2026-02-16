@@ -5,7 +5,7 @@ import 'package:saito/features/home/home_screen.dart';
 import 'package:saito/core/config/design_system.dart';
 import 'package:saito/core/logic/bloc/user_progress_bloc.dart';
 import 'package:saito/features/onboarding/onboarding_screen.dart';
-import 'package:saito/features/security/security_lock_screen.dart';
+import 'package:saito/features/settings/security_lock.dart';
 
 class SaitoApp extends StatefulWidget {
   const SaitoApp({super.key});

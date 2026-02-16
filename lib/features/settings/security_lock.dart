@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:saito/core/config/design_system.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:saito/widgets/modern_app_bar.dart';
 
 class SecurityLockScreen extends StatefulWidget {
   final String? correctPin;
@@ -27,7 +28,7 @@ class SecurityLockScreen extends StatefulWidget {
 class _SecurityLockScreenState extends State<SecurityLockScreen> {
   final LocalAuthentication _auth = LocalAuthentication();
   String _currentPin = '';
-  String? _firstPin; // For setup confirmation
+  String? _firstPin;
   bool _isConfirming = false;
 
   @override
@@ -131,12 +132,17 @@ class _SecurityLockScreenState extends State<SecurityLockScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: widget.isSetup ? const ModernAppBar(title: 'Security') : null,
       body: SafeArea(
         child: Padding(
-          padding: DesignSystem.pagePadding(DesignSystem.spacingL),
+          padding: const EdgeInsets.symmetric(
+            horizontal: DesignSystem.spacingL,
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: DesignSystem.spacingXL),
               Icon(
                 widget.isSetup ? Symbols.security : Symbols.lock,
                 size: 64,
@@ -146,18 +152,17 @@ class _SecurityLockScreenState extends State<SecurityLockScreen> {
               Text(
                 widget.isSetup
                     ? (_isConfirming
-                          ? 'CONFIRM YOUR PIN'
-                          : 'SET YOUR SECURITY PIN')
-                    : 'ENTER YOUR PIN',
+                          ? 'Confirm your PIN'
+                          : 'Set your security PIN')
+                    : 'Unlock to use Baki',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
                 ),
               ),
               const SizedBox(height: DesignSystem.spacingM),
               Text(
-                'YOUR TRAINING DATA IS PROTECTED',
-                style: theme.textTheme.labelLarge?.copyWith(
+                'Enter your PIN or use biometrics',
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.outline,
                 ),
               ),
@@ -171,7 +176,7 @@ class _SecurityLockScreenState extends State<SecurityLockScreen> {
                     ? _authenticateBiometrically
                     : null,
               ),
-              const SizedBox(height: DesignSystem.spacingL),
+              const SizedBox(height: DesignSystem.spacingXL),
             ],
           ),
         ),
@@ -204,21 +209,13 @@ class _PinDots extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(
                   horizontal: DesignSystem.spacingS,
                 ),
-                width: DesignSystem.spacingM,
-                height: DesignSystem.spacingM,
+                width: 14,
+                height: 14,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isActive
                       ? theme.colorScheme.primary
                       : theme.colorScheme.surfaceContainerHighest,
-                  border: Border.all(
-                    color: isActive
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.outlineVariant.withValues(
-                            alpha: 0.5,
-                          ),
-                    width: 1,
-                  ),
                 ),
               ),
             );
@@ -314,14 +311,13 @@ class _KeyboardKey extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(DesignSystem.radiusMax),
           child: Container(
-            width: 72,
-            height: 72,
+            width: 80,
+            height: 80,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.5),
               shape: BoxShape.circle,
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.4,
               ),
             ),
             child: label != null

@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:saito/core/config/design_system.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:saito/core/logic/bloc/user_progress_bloc.dart';
-import 'package:saito/features/security/security_lock_screen.dart';
+import 'package:saito/features/settings/security_lock.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -162,13 +162,13 @@ class _IntroStep extends StatelessWidget {
         children: [
           const Spacer(),
           Container(
-                padding: DesignSystem.pagePadding(DesignSystem.spacingL),
+                padding: const EdgeInsets.all(DesignSystem.spacingXL),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: theme.colorScheme.surface),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
                 ),
                 child: Icon(
-                  Icons.fitness_center_rounded,
+                  Symbols.fitness_center,
                   size: 64,
                   color: theme.colorScheme.primary,
                 ),
@@ -407,10 +407,10 @@ class _SecuritySetupStep extends StatelessWidget {
         children: [
           const Spacer(),
           Container(
-            padding: const EdgeInsets.all(DesignSystem.spacingL),
+            padding: const EdgeInsets.all(DesignSystem.spacingXL),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: theme.colorScheme.primary, width: 2),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
             child: Icon(
               Symbols.lock,

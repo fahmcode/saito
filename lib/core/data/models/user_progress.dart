@@ -43,6 +43,9 @@ class UserProgress extends HiveObject {
   @HiveField(12)
   String themeMode; // 'system', 'light', 'dark'
 
+  @HiveField(13)
+  DateTime? startDate;
+
   UserProgress({
     this.currentDay = 1,
     this.streak = 0,
@@ -55,6 +58,7 @@ class UserProgress extends HiveObject {
     this.securityPin,
     this.lockDurationMinutes = 0,
     this.themeMode = 'system',
+    this.startDate,
     Map<int, List<int>>? dailyVolume,
     Map<String, int>? baselineReps,
   }) : dailyVolume = dailyVolume ?? {},
