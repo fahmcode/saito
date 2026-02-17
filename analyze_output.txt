@@ -1,0 +1,8 @@
+Analyzing baki...                                               
+
+   info - Use 'const' with the constructor to improve performance - lib\features\settings\settings_screen.dart:140:13 - prefer_const_constructors
+warning - Unused import: 'dart:math' - lib\features\workout\workout_complete_screen.dart:1:8 - unused_import
+warning - Unused import: 'package:saito/core/logic/cubit/preferences_cubit.dart' - lib\features\workout\workout_screen.dart:8:8 - unused_import
+warning - The operand can't be 'null', so the condition is always 'true' - lib\features\workout\workout_screen.dart:406:37 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\features\workout\workout_screen.dart:408:36 - unnecessary_non_null_assertion
+

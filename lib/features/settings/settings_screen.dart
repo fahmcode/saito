@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_symbols_icons/symbols.dart';
-import 'package:saito/core/config/design_system.dart';
-import 'package:saito/widgets/settings_widgets.dart';
 import 'package:saito/widgets/modern_app_bar.dart';
+import 'package:saito/widgets/settings_widgets.dart';
+import 'package:saito/core/config/design_system.dart';
+import 'package:saito/core/logic/cubit/workout_cubit.dart';
 import 'package:saito/features/settings/security_lock.dart';
-import 'package:saito/core/logic/bloc/user_progress_bloc.dart';
+import 'package:saito/core/logic/cubit/security_cubit.dart';
+import 'package:saito/core/logic/cubit/preferences_cubit.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -16,287 +18,162 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return BlocBuilder<UserProgressBloc, UserProgressState>(
-      builder: (context, state) {
-        final progress = state.progress;
-
-        return Scaffold(
-          appBar: const ModernAppBar(title: 'Settings'),
-          backgroundColor: theme.colorScheme.surface,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: DesignSystem.spacingL,
-            ),
-            child: Column(
-              children: [
-                SettingsProfileHeader(
-                  name: 'GX Force',
-                  username: 'gxforce430',
-                  onEditTap: () {},
-                ),
-
-                SettingsGroup(
-                  title: 'Effects',
-                  children: [
-                    SettingsSwitchTile(
-                      icon: Symbols.volume_up,
-                      title: 'Audio Effects',
-                      subtitle: 'Play sounds during workout transitions',
-                      value: progress.audioEnabled,
-                      onChanged: (v) {
-                        HapticFeedback.lightImpact();
-                        context.read<UserProgressBloc>().add(
-                          UpdateSettingsEvent(audioEnabled: v),
-                        );
-                      },
-                    ),
-                    SettingsSwitchTile(
-                      icon: Symbols.vibration,
-                      title: 'Haptic Feedback',
-                      subtitle: 'Physical touch feedback',
-                      value: progress.hapticsEnabled,
-                      onChanged: (v) {
-                        HapticFeedback.mediumImpact();
-                        context.read<UserProgressBloc>().add(
-                          UpdateSettingsEvent(hapticsEnabled: v),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-
-                SettingsGroup(
-                  title: 'Security',
-                  children: [
-                    SettingsSwitchTile(
-                      icon: Symbols.lock,
-                      title: 'App Lock',
-                      subtitle: 'Protect your progress with a PIN',
-                      value: progress.securityEnabled,
-                      onChanged: (v) => _handleSecurityToggle(context, v),
-                    ),
-                    if (progress.securityEnabled) ...[
-                      SettingsTile(
-                        icon: Symbols.timer,
-                        title: 'Auto-Lock Duration',
-                        subtitle: _getLockDurationLabel(
-                          progress.lockDurationMinutes,
-                        ),
-                        onTap: () => _showLockDurationSelector(
-                          context,
-                          progress.lockDurationMinutes,
-                        ),
-                      ),
-                      SettingsSwitchTile(
-                        icon: Symbols.fingerprint,
-                        title: 'Biometric Entry',
-                        subtitle: 'Unlock using Fingerprint or Face ID',
-                        value: progress.biometricEnabled,
-                        onChanged: (v) => _handleBiometricToggle(context, v),
-                      ),
-                    ],
-                  ],
-                ),
-
-                SettingsGroup(
-                  title: 'Preferences',
-                  children: [
-                    SettingsTile(
-                      icon: Symbols.palette,
-                      title: 'Appearance',
-                      subtitle: _getThemeName(progress.themeMode),
-                      onTap: () =>
-                          _showThemeSelector(context, progress.themeMode),
-                    ),
-                    SettingsTile(
-                      icon: Symbols.info,
-                      title: 'Version',
-                      trailing: Text(
-                        '0.1.0',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: DesignSystem.spacingXXL),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _handleSecurityToggle(BuildContext context, bool enabled) {
-    HapticFeedback.mediumImpact();
-    if (enabled) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => SecurityLockScreen(
-            isSetup: true,
-            onResult: (success) {
-              if (success) Navigator.pop(context);
-            },
-            onPinSet: (pin) {
-              context.read<UserProgressBloc>().add(
-                UpdateSettingsEvent(securityEnabled: true, securityPin: pin),
-              );
-            },
-          ),
-        ),
-      );
-    } else {
-      context.read<UserProgressBloc>().add(
-        const UpdateSettingsEvent(securityEnabled: false),
-      );
-    }
-  }
-
-  Future<void> _handleBiometricToggle(
-    BuildContext context,
-    bool enabled,
-  ) async {
-    HapticFeedback.mediumImpact();
-    if (enabled) {
-      final auth = LocalAuthentication();
-      final canCheck = await auth.canCheckBiometrics;
-      final isSupported = await auth.isDeviceSupported();
-
-      if (!canCheck || !isSupported) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Biometrics not available on this device.'),
-            ),
-          );
-        }
-        return;
-      }
-
-      try {
-        final authenticated = await auth.authenticate(
-          localizedReason: 'Confirm biometrics to enable entry',
-          options: const AuthenticationOptions(
-            stickyAuth: true,
-            biometricOnly: true,
-          ),
-        );
-
-        if (authenticated && context.mounted) {
-          context.read<UserProgressBloc>().add(
-            const UpdateSettingsEvent(biometricEnabled: true),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-        }
-      }
-    } else {
-      context.read<UserProgressBloc>().add(
-        const UpdateSettingsEvent(biometricEnabled: false),
-      );
-    }
-  }
-
-  void _showThemeSelector(BuildContext context, String currentMode) {
-    final theme = Theme.of(context);
-    showModalBottomSheet(
-      context: context,
+    return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(DesignSystem.radiusL),
-        ),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      appBar: const ModernAppBar(title: 'Settings'),
+      body: SafeArea(
+        child: ListView(
+          padding: DesignSystem.pagePadding(DesignSystem.spacingXL),
           children: [
-            const SizedBox(height: DesignSystem.spacingL),
-            _buildThemeOption(context, 'System Default', 'system', currentMode),
-            _buildThemeOption(context, 'Light Mode', 'light', currentMode),
-            _buildThemeOption(context, 'Dark Mode', 'dark', currentMode),
-            const SizedBox(height: DesignSystem.spacingL),
+            _buildEffectsSection(context),
+            _buildSecuritySection(context),
+            _buildPreferencesSection(context),
+            _buildDangerSection(context),
+            const SizedBox(height: DesignSystem.spacingXXL),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildThemeOption(
-    BuildContext context,
-    String title,
-    String value,
-    String current,
-  ) {
-    final isSelected = value == current;
-    return ListTile(
-      leading: Icon(
-        isSelected ? Symbols.check_circle : Symbols.circle,
-        color: isSelected ? Theme.of(context).colorScheme.primary : null,
-        fill: isSelected ? 1 : 0,
-      ),
-      title: Text(title),
-      onTap: () {
-        context.read<UserProgressBloc>().add(
-          UpdateSettingsEvent(themeMode: value),
+  Widget _buildEffectsSection(BuildContext context) {
+    return BlocBuilder<PreferencesCubit, PreferencesState>(
+      builder: (context, state) {
+        final prefs = state.preferences;
+        return SettingsGroup(
+          title: 'EFFECTS',
+          children: [
+            SettingsSwitchTile(
+              icon: Symbols.volume_up,
+              title: 'Audio FX',
+              subtitle: 'In-workout sound effects',
+              value: prefs.audioEnabled,
+              onChanged: (v) =>
+                  context.read<PreferencesCubit>().setAudioEnabled(v),
+            ),
+            SettingsSwitchTile(
+              icon: Symbols.vibration,
+              title: 'Haptic Feedback',
+              subtitle: 'Tactile responses',
+              value: prefs.hapticsEnabled,
+              onChanged: (v) =>
+                  context.read<PreferencesCubit>().setHapticsEnabled(v),
+            ),
+          ],
         );
-        Navigator.pop(context);
       },
     );
   }
 
-  void _showLockDurationSelector(BuildContext context, int current) {
-    final theme = Theme.of(context);
-    final levels = {
-      0: 'Immediately',
-      1: '1 Minute',
-      5: '5 Minutes',
-      15: '15 Minutes',
-    };
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(DesignSystem.radiusL),
-        ),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildSecuritySection(BuildContext context) {
+    return BlocBuilder<SecurityCubit, SecurityState>(
+      builder: (context, state) {
+        final config = state.config;
+        return SettingsGroup(
+          title: 'SECURITY',
           children: [
-            const SizedBox(height: DesignSystem.spacingL),
-            ...levels.entries.map(
-              (e) => ListTile(
-                title: Text(e.value),
-                trailing: current == e.key
-                    ? Icon(Icons.check, color: theme.colorScheme.primary)
-                    : null,
-                onTap: () {
-                  context.read<UserProgressBloc>().add(
-                    UpdateSettingsEvent(lockDurationMinutes: e.key),
-                  );
-                  Navigator.pop(context);
+            SettingsSwitchTile(
+              icon: Symbols.lock,
+              title: 'App Lock',
+              subtitle: 'Require PIN to open',
+              value: config.securityEnabled,
+              onChanged: (v) {
+                if (v) {
+                  _showPinSetup(context);
+                } else {
+                  context.read<SecurityCubit>().disableSecurity();
+                }
+              },
+            ),
+            if (config.securityEnabled) ...[
+              SettingsTile(
+                icon: Symbols.timer,
+                title: 'Auto Lock',
+                subtitle: _lockDurationText(config.lockDurationMinutes),
+                onTap: () => _showLockDurationPicker(context),
+              ),
+              SettingsSwitchTile(
+                icon: Symbols.fingerprint,
+                title: 'Biometrics',
+                subtitle: 'Use fingerprint / face',
+                value: config.biometricEnabled,
+                onChanged: (v) async {
+                  if (v) {
+                    final auth = LocalAuthentication();
+                    final canCheck = await auth.canCheckBiometrics;
+                    final isSupported = await auth.isDeviceSupported();
+                    if (!canCheck || !isSupported) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Biometrics not available on this device',
+                            ),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+                  if (context.mounted) {
+                    context.read<SecurityCubit>().setBiometricEnabled(v);
+                  }
                 },
               ),
-            ),
-            const SizedBox(height: DesignSystem.spacingL),
+            ],
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
-  String _getThemeName(String mode) {
-    switch (mode) {
+  Widget _buildPreferencesSection(BuildContext context) {
+    return BlocBuilder<PreferencesCubit, PreferencesState>(
+      builder: (context, state) {
+        final prefs = state.preferences;
+        return SettingsGroup(
+          title: 'PREFERENCES',
+          children: [
+            SettingsTile(
+              icon: Symbols.palette,
+              title: 'Appearance',
+              subtitle: _themeDisplayText(prefs.themeMode),
+              onTap: () => _showThemePicker(context, prefs.themeMode),
+            ),
+            const SettingsTile(
+              icon: Symbols.info,
+              title: 'Version',
+              subtitle: '1.0.0',
+              trailing: SizedBox.shrink(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDangerSection(BuildContext context) {
+    return SettingsGroup(
+      title: 'DANGER ZONE',
+      children: [
+        SettingsTile(
+          icon: Symbols.delete_forever,
+          title: 'Reset All Progress',
+          iconColor: Theme.of(context).colorScheme.error,
+          onTap: () => _showResetConfirmation(context),
+        ),
+      ],
+    );
+  }
+
+  String _lockDurationText(int minutes) {
+    if (minutes == 0) return 'Immediately';
+    if (minutes == 1) return 'After 1 minute';
+    return 'After $minutes minutes';
+  }
+
+  String _themeDisplayText(String themeMode) {
+    switch (themeMode) {
       case 'light':
         return 'Light';
       case 'dark':
@@ -306,8 +183,168 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  String _getLockDurationLabel(int minutes) {
-    if (minutes == 0) return 'Immediately';
-    return 'After $minutes Minutes';
+  void _showPinSetup(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SecurityLockScreen(
+          isSetup: true,
+          onResult: (success) {
+            if (success) Navigator.pop(context);
+          },
+          onPinSet: (pin) {
+            context.read<SecurityCubit>().enableSecurity(pin: pin);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showLockDurationPicker(BuildContext context) {
+    final theme = Theme.of(context);
+    final options = [
+      {'label': 'Immediately', 'value': 0},
+      {'label': 'After 1 minute', 'value': 1},
+      {'label': 'After 5 minutes', 'value': 5},
+      {'label': 'After 15 minutes', 'value': 15},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surfaceContainer,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(DesignSystem.spacingL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: DesignSystem.spacingL),
+              Text(
+                'Auto Lock',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: DesignSystem.spacingL),
+              ...options.map((option) {
+                return ListTile(
+                  title: Text(option['label'] as String),
+                  onTap: () {
+                    context.read<SecurityCubit>().setLockDuration(
+                      option['value'] as int,
+                    );
+                    Navigator.pop(sheetContext);
+                  },
+                );
+              }),
+              const SizedBox(height: DesignSystem.spacingM),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showThemePicker(BuildContext context, String currentMode) {
+    final theme = Theme.of(context);
+    final options = [
+      {'label': 'System', 'value': 'system'},
+      {'label': 'Light', 'value': 'light'},
+      {'label': 'Dark', 'value': 'dark'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surfaceContainer,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(DesignSystem.spacingL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: DesignSystem.spacingL),
+              Text(
+                'Appearance',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: DesignSystem.spacingL),
+              ...options.map((option) {
+                final isSelected = currentMode == option['value'];
+                return ListTile(
+                  title: Text(option['label'] as String),
+                  trailing: isSelected
+                      ? Icon(Symbols.check, color: theme.colorScheme.primary)
+                      : null,
+                  onTap: () {
+                    context.read<PreferencesCubit>().setThemeMode(
+                      option['value'] as String,
+                    );
+                    Navigator.pop(sheetContext);
+                  },
+                );
+              }),
+              const SizedBox(height: DesignSystem.spacingM),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showResetConfirmation(BuildContext context) {
+    final theme = Theme.of(context);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Reset Progress?'),
+          content: const Text(
+            'This will permanently delete all workout data. This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            FilledButton(
+              onPressed: () {
+                context.read<WorkoutCubit>().resetProgress();
+                Navigator.pop(dialogContext);
+                Navigator.pop(context);
+                HapticFeedback.heavyImpact();
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+              ),
+              child: const Text('RESET'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

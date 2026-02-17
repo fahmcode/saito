@@ -3,12 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saito/features/home/home_screen.dart';
 import 'package:saito/core/config/design_system.dart';
-import 'package:saito/core/logic/bloc/user_progress_bloc.dart';
+import 'package:saito/core/logic/cubit/workout_cubit.dart';
+import 'package:saito/core/logic/cubit/preferences_cubit.dart';
+import 'package:saito/core/logic/cubit/security_cubit.dart';
 import 'package:saito/features/onboarding/onboarding_screen.dart';
 import 'package:saito/features/settings/security_lock.dart';
+import 'package:saito/core/data/repositories/app_repository.dart';
 
 class SaitoApp extends StatefulWidget {
-  const SaitoApp({super.key});
+  final AppRepository repository;
+  const SaitoApp({super.key, required this.repository});
 
   @override
   State<SaitoApp> createState() => _SaitoAppState();
@@ -16,17 +20,16 @@ class SaitoApp extends StatefulWidget {
 
 class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
   bool _isLocked = false;
-  bool _hasUnlockedThisSession = false; // Track if user has unlocked
+  bool _hasUnlockedThisSession = false;
   DateTime? _backgroundTime;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Initialize lock status based on security settings
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final progress = context.read<UserProgressBloc>().state.progress;
-      if (progress.securityEnabled) {
+      final security = context.read<SecurityCubit>().state.config;
+      if (security.securityEnabled) {
         setState(() => _isLocked = true);
       }
     });
@@ -48,8 +51,8 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
   }
 
   void _checkLockStatus() {
-    final progress = context.read<UserProgressBloc>().state.progress;
-    if (!progress.securityEnabled) {
+    final config = context.read<SecurityCubit>().state.config;
+    if (!config.securityEnabled) {
       setState(() {
         _isLocked = false;
         _hasUnlockedThisSession = false;
@@ -57,25 +60,21 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
       return;
     }
 
-    // If user has unlocked this session and we have no background time,
-    // don't re-lock (this happens right after successful authentication)
     if (_hasUnlockedThisSession && _backgroundTime == null) {
       return;
     }
 
-    // If we have background time, check if we should lock
     if (_backgroundTime != null) {
       final durationSinceBackground = DateTime.now().difference(
         _backgroundTime!,
       );
-      final lockDuration = Duration(minutes: progress.lockDurationMinutes);
+      final lockDuration = Duration(minutes: config.lockDurationMinutes);
 
-      // For immediate lock (0 minutes) or if duration has passed, lock the app
-      if (progress.lockDurationMinutes == 0 ||
+      if (config.lockDurationMinutes == 0 ||
           durationSinceBackground >= lockDuration) {
         setState(() {
           _isLocked = true;
-          _hasUnlockedThisSession = false; // Reset session on lock
+          _hasUnlockedThisSession = false;
         });
       }
       _backgroundTime = null;
@@ -85,128 +84,73 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
   void _onUnlockSuccess() {
     setState(() {
       _isLocked = false;
-      _hasUnlockedThisSession = true; // Mark as unlocked for this session
+      _hasUnlockedThisSession = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<UserProgressBloc, UserProgressState>(
-      builder: (context, state) {
-        final themeMode = _getThemeMode(state.progress.themeMode);
-
-        return MaterialApp(
-          title: 'SAITO-100',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            scaffoldBackgroundColor: DesignSystem.cleanWhite,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: DesignSystem.saitoRed,
-              brightness: Brightness.light,
-              primary: DesignSystem.saitoRed,
-              surface: DesignSystem.offWhite,
-              surfaceContainer: Colors.white,
-              surfaceContainerHighest: const Color(0xFFEEEEEE),
-              onSurface: DesignSystem.offBlack,
-              onPrimary: DesignSystem.cleanWhite,
-              onSecondary: DesignSystem.cleanWhite,
-            ),
-            useMaterial3: true,
-            filledButtonTheme: FilledButtonThemeData(
-              style: FilledButton.styleFrom(
-                foregroundColor: DesignSystem.cleanWhite,
-                backgroundColor: DesignSystem.saitoRed,
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            outlinedButtonTheme: OutlinedButtonThemeData(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: DesignSystem.saitoRed,
-                side: const BorderSide(color: DesignSystem.saitoRed),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: DesignSystem.saitoRed,
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: DesignSystem.cleanWhite,
-              surfaceTintColor: Colors.transparent,
-            ),
+    return MultiRepositoryProvider(
+      providers: [RepositoryProvider.value(value: widget.repository)],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => WorkoutCubit(widget.repository)..load(),
           ),
-          darkTheme: ThemeData(
-            scaffoldBackgroundColor: DesignSystem.pureBlack,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: DesignSystem.saitoRed,
-              brightness: Brightness.dark,
-              primary: DesignSystem.saitoRed,
-              surface: DesignSystem.offBlack,
-              surfaceContainer: DesignSystem.darkGray,
-              surfaceContainerHighest: const Color(0xFF2C2C2C),
-              onSurface: DesignSystem.cleanWhite,
-              onPrimary: DesignSystem.cleanWhite,
-              onSecondary: DesignSystem.cleanWhite,
-            ),
-            useMaterial3: true,
-            filledButtonTheme: FilledButtonThemeData(
-              style: FilledButton.styleFrom(
-                foregroundColor: DesignSystem.cleanWhite,
-                backgroundColor: DesignSystem.saitoRed,
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            outlinedButtonTheme: OutlinedButtonThemeData(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: DesignSystem.cleanWhite,
-                side: const BorderSide(color: DesignSystem.cleanWhite),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: DesignSystem.cleanWhite,
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: DesignSystem.pureBlack,
-              surfaceTintColor: Colors.transparent,
-            ),
+          BlocProvider(
+            create: (context) => PreferencesCubit(widget.repository)..load(),
           ),
-          themeMode: themeMode,
-          home: BlocBuilder<UserProgressBloc, UserProgressState>(
-            builder: (context, state) {
-              final progress = state.progress;
-
-              if (progress.securityEnabled && _isLocked) {
-                return SecurityLockScreen(
-                  correctPin: progress.securityPin,
-                  bioEnabled: progress.biometricEnabled,
-                  onResult: (success) {
-                    if (success) {
-                      _onUnlockSuccess();
-                    }
-                  },
+          BlocProvider(
+            create: (context) => SecurityCubit(widget.repository)..load(),
+          ),
+        ],
+        child: BlocBuilder<PreferencesCubit, PreferencesState>(
+          buildWhen: (prev, curr) =>
+              prev.preferences.themeMode != curr.preferences.themeMode,
+          builder: (context, state) {
+            return MaterialApp(
+              title: 'Saito-100',
+              debugShowCheckedModeBanner: false,
+              theme: _buildLightTheme(),
+              darkTheme: _buildDarkTheme(),
+              themeMode: _resolveThemeMode(state.preferences.themeMode),
+              builder: (context, child) {
+                return Stack(
+                  children: [
+                    if (child != null) child,
+                    if (_isLocked &&
+                        context
+                            .read<SecurityCubit>()
+                            .state
+                            .config
+                            .securityEnabled)
+                      SecurityLockScreen(
+                        correctPin: context
+                            .read<SecurityCubit>()
+                            .state
+                            .config
+                            .securityPin,
+                        bioEnabled: context
+                            .read<SecurityCubit>()
+                            .state
+                            .config
+                            .biometricEnabled,
+                        onResult: (success) {
+                          if (success) _onUnlockSuccess();
+                        },
+                      ),
+                  ],
                 );
-              }
-
-              if (!progress.hasSetBaseline) {
-                return const OnboardingScreen();
-              }
-              return const HomeScreen();
-            },
-          ),
-        );
-      },
+              },
+              home: const _AppContainer(),
+            );
+          },
+        ),
+      ),
     );
   }
 
-  ThemeMode _getThemeMode(String themeMode) {
+  ThemeMode _resolveThemeMode(String themeMode) {
     switch (themeMode) {
       case 'light':
         return ThemeMode.light;
@@ -215,5 +159,70 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
       default:
         return ThemeMode.system;
     }
+  }
+
+  ThemeData _buildLightTheme() {
+    return ThemeData(
+      scaffoldBackgroundColor: DesignSystem.cleanWhite,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: DesignSystem.saitoRed,
+        brightness: Brightness.light,
+        primary: DesignSystem.saitoRed,
+        surface: DesignSystem.offWhite,
+        surfaceContainer: Colors.white,
+        surfaceContainerHighest: const Color(0xFFEEEEEE),
+        onSurface: DesignSystem.offBlack,
+        onPrimary: DesignSystem.cleanWhite,
+        onSecondary: DesignSystem.cleanWhite,
+      ),
+      useMaterial3: true,
+      textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: DesignSystem.cleanWhite,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+  }
+
+  ThemeData _buildDarkTheme() {
+    return ThemeData(
+      scaffoldBackgroundColor: DesignSystem.pureBlack,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: DesignSystem.saitoRed,
+        brightness: Brightness.dark,
+        primary: DesignSystem.saitoRed,
+        surface: DesignSystem.offBlack,
+        surfaceContainer: DesignSystem.darkGray,
+        surfaceContainerHighest: const Color(0xFF2C2C2C),
+        onSurface: DesignSystem.cleanWhite,
+        onPrimary: DesignSystem.cleanWhite,
+        onSecondary: DesignSystem.cleanWhite,
+      ),
+      useMaterial3: true,
+      textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: DesignSystem.pureBlack,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+  }
+}
+
+class _AppContainer extends StatelessWidget {
+  const _AppContainer();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<PreferencesCubit, PreferencesState>(
+      buildWhen: (prev, curr) =>
+          prev.preferences.onboardingComplete !=
+          curr.preferences.onboardingComplete,
+      builder: (context, state) {
+        if (!state.preferences.onboardingComplete) {
+          return const OnboardingScreen();
+        }
+        return const HomeScreen();
+      },
+    );
   }
 }

@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:saito/widgets/modern_app_bar.dart';
 import 'package:saito/core/config/design_system.dart';
 import 'package:saito/core/engine/workout_engine.dart';
-import 'package:saito/core/data/models/user_progress.dart';
+import 'package:saito/core/data/models/workout_progress.dart';
 import 'package:saito/features/workout/workout_screen.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 class DayDetailsScreen extends StatelessWidget {
   final int dayNumber;
-  final UserProgress progress;
+  final WorkoutProgress progress;
 
   const DayDetailsScreen({
     super.key,
@@ -30,7 +30,9 @@ class DayDetailsScreen extends StatelessWidget {
     final isToday = dayNumber == progress.currentDay;
     final isRecovery = workoutType == WorkoutType.recovery;
     final volume = progress.dailyVolume[dayNumber];
-    final canStartWorkout = isToday && !isCompleted;
+
+    // S3: canStartWorkout should only be true if it's today AND we haven't done it yet today.
+    final canStartWorkout = isToday && !isCompleted && progress.canWorkoutToday;
 
     return Scaffold(
       appBar: ModernAppBar(
@@ -39,11 +41,14 @@ class DayDetailsScreen extends StatelessWidget {
           if (isCompleted)
             Padding(
               padding: const EdgeInsets.only(right: DesignSystem.spacingM),
-              child: Icon(
-                Symbols.check_circle,
-                color: Colors.green.shade600,
-                size: 20,
-                fill: 1,
+              child: Semantics(
+                label: 'Day $dayNumber completed',
+                child: Icon(
+                  Symbols.check_circle,
+                  color: Colors.green.shade600,
+                  size: 20,
+                  fill: 1,
+                ),
               ),
             ),
         ],
@@ -58,6 +63,7 @@ class DayDetailsScreen extends StatelessWidget {
             phase,
             canStartWorkout,
             isRecovery,
+            !progress.canWorkoutToday && isToday && !isCompleted,
           ),
 
           Padding(
@@ -69,7 +75,6 @@ class DayDetailsScreen extends StatelessWidget {
                   context,
                   isRecovery ? 'RECOVERY PLAN' : 'EXERCISES',
                   exercises.length,
-                  canStartWorkout,
                 ),
                 const SizedBox(height: DesignSystem.spacingM),
                 if (isRecovery)
@@ -96,6 +101,7 @@ class DayDetailsScreen extends StatelessWidget {
     WorkoutPhase phase,
     bool canStart,
     bool isRecovery,
+    bool alreadyDoneToday,
   ) {
     final theme = Theme.of(context);
     return Container(
@@ -115,46 +121,43 @@ class DayDetailsScreen extends StatelessWidget {
           ),
         ),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      type.label,
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.5,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      phase.name.toUpperCase(),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _getWorkoutDescription(type),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  type.label,
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.5,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
-              ),
-              if (canStart) _buildHeroAction(context, isRecovery),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  phase.name.toUpperCase(),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  alreadyDoneToday
+                      ? 'Limit reached for today. Rest and recover for tomorrow.'
+                      : _getWorkoutDescription(type),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
+          if (canStart) _buildHeroAction(context, isRecovery),
         ],
       ),
     );
@@ -164,25 +167,30 @@ class DayDetailsScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: DesignSystem.spacingL),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.heavyImpact();
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const WorkoutScreen()),
-          );
-        },
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: ShapeDecoration(
-            color: theme.colorScheme.primary,
-            shape: const StadiumBorder(),
-          ),
-          child: Icon(
-            Symbols.play_arrow,
-            color: theme.colorScheme.onPrimary,
-            size: 36,
-            fill: 1,
+      child: Semantics(
+        button: true,
+        label: isRecovery ? 'Start recovery day' : 'Start workout',
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.heavyImpact();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+            );
+          },
+          customBorder: const StadiumBorder(),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: ShapeDecoration(
+              color: theme.colorScheme.primary,
+              shape: const StadiumBorder(),
+            ),
+            child: Icon(
+              Symbols.play_arrow,
+              color: theme.colorScheme.onPrimary,
+              size: 36,
+              fill: 1,
+            ),
           ),
         ),
       ),
@@ -193,7 +201,6 @@ class DayDetailsScreen extends StatelessWidget {
     BuildContext context,
     String title,
     int itemCount,
-    bool canStart,
   ) {
     final theme = Theme.of(context);
     return Row(
@@ -255,67 +262,75 @@ class DayDetailsScreen extends StatelessWidget {
               ? volume[index]
               : null;
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: DesignSystem.spacingL,
-              horizontal: DesignSystem.spacingL,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Symbols.fitness_center,
-                    size: 22,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: DesignSystem.spacingM),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        exercise.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.2,
+          return Semantics(
+            label:
+                '${exercise.name}, ${exercise.sets} sets of ${exercise.baseReps} ${exercise.isHold ? "seconds" : "reps"}${isCompleted ? ", completed" : ""}',
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: DesignSystem.spacingL,
+                horizontal: DesignSystem.spacingL,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: ExcludeSemantics(
+                      child: Icon(
+                        Symbols.fitness_center,
+                        size: 22,
+                        color: theme.colorScheme.primary,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${exercise.sets} sets × ${exercise.baseReps}${exercise.isHold ? "s hold" : " reps"}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: DesignSystem.spacingM),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          exercise.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.2,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          '${exercise.sets} sets × ${exercise.baseReps}${exercise.isHold ? "s hold" : " reps"}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                if (isCompleted)
-                  _buildAppleVolumeBadge(
-                    context,
-                    setsPerformed ?? exercise.baseReps,
+                  if (isCompleted)
+                    _buildAppleVolumeBadge(
+                      context,
+                      setsPerformed ?? exercise.baseReps,
+                    ),
+                  const SizedBox(width: 8),
+                  ExcludeSemantics(
+                    child: Icon(
+                      Symbols.more_vert,
+                      size: 20,
+                      color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                    ),
                   ),
-                const SizedBox(width: 8),
-                Icon(
-                  Symbols.more_vert,
-                  size: 20,
-                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -324,45 +339,53 @@ class DayDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildAppleRecovery(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: DesignSystem.spacingXXL),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-          width: 0.5,
+    return Semantics(
+      label:
+          'Active Recovery day. Rest and allow your muscles to rebuild. Light stretching encouraged.',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: DesignSystem.spacingXXL),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.2,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Symbols.bedtime,
-            size: 64,
-            color: theme.colorScheme.primary.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: DesignSystem.spacingL),
-          Text(
-            'Active Recovery',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              'Rest and allow your muscles to rebuild. Light stretching encouraged for optimal flow.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.5,
+        child: Column(
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                Symbols.bedtime,
+                size: 64,
+                color: theme.colorScheme.primary.withValues(alpha: 0.4),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: DesignSystem.spacingL),
+            Text(
+              'Active Recovery',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Rest and allow your muscles to rebuild. Light stretching encouraged for optimal flow.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

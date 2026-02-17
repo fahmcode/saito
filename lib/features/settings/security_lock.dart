@@ -39,11 +39,6 @@ class _SecurityLockScreenState extends State<SecurityLockScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _authenticateBiometrically() async {
     final bool canCheck = await _auth.canCheckBiometrics;
     final bool isSupported = await _auth.isDeviceSupported();
@@ -143,10 +138,12 @@ class _SecurityLockScreenState extends State<SecurityLockScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: DesignSystem.spacingXL),
-              Icon(
-                widget.isSetup ? Symbols.security : Symbols.lock,
-                size: 64,
-                color: theme.colorScheme.primary,
+              ExcludeSemantics(
+                child: Icon(
+                  widget.isSetup ? Symbols.security : Symbols.lock,
+                  size: 64,
+                  color: theme.colorScheme.primary,
+                ),
               ),
               const SizedBox(height: DesignSystem.spacingXL),
               Text(
@@ -192,36 +189,39 @@ class _PinDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (index) {
-        final isActive = index < length;
-        return TweenAnimationBuilder<double>(
-          key: ValueKey('dot_${index}_$length'),
-          tween: Tween<double>(begin: isActive ? 0.8 : 1.0, end: 1.0),
-          duration: isActive ? DesignSystem.durationFast : Duration.zero,
-          curve: Curves.easeOutBack,
-          builder: (context, scale, child) {
-            return Transform.scale(
-              scale: scale,
-              child: AnimatedContainer(
-                duration: DesignSystem.durationFast,
-                margin: const EdgeInsets.symmetric(
-                  horizontal: DesignSystem.spacingS,
+    return Semantics(
+      label: 'PIN entered: $length of 4 digits',
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(4, (index) {
+          final isActive = index < length;
+          return TweenAnimationBuilder<double>(
+            key: ValueKey('dot_${index}_$length'),
+            tween: Tween<double>(begin: isActive ? 0.8 : 1.0, end: 1.0),
+            duration: isActive ? DesignSystem.durationFast : Duration.zero,
+            curve: Curves.easeOutBack,
+            builder: (context, scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: AnimatedContainer(
+                  duration: DesignSystem.durationFast,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: DesignSystem.spacingS,
+                  ),
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isActive
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.surfaceContainerHighest,
+                  ),
                 ),
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isActive
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.surfaceContainerHighest,
-                ),
-              ),
-            );
-          },
-        );
-      }),
+              );
+            },
+          );
+        }),
+      ),
     );
   }
 }
@@ -259,7 +259,11 @@ class _PinKeyboard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: digits
             .map(
-              (d) => _KeyboardKey(label: d, onPressed: () => onDigitPressed(d)),
+              (d) => _KeyboardKey(
+                label: d,
+                semanticLabel: 'Digit $d',
+                onPressed: () => onDigitPressed(d),
+              ),
             )
             .toList(),
       ),
@@ -272,12 +276,18 @@ class _PinKeyboard extends StatelessWidget {
       children: [
         _KeyboardKey(
           icon: onBiometricPressed != null ? Symbols.fingerprint : null,
+          semanticLabel: 'Use biometrics',
           onPressed: onBiometricPressed ?? () {},
           opacity: onBiometricPressed != null ? 1.0 : 0.0,
         ),
-        _KeyboardKey(label: '0', onPressed: () => onDigitPressed('0')),
+        _KeyboardKey(
+          label: '0',
+          semanticLabel: 'Digit 0',
+          onPressed: () => onDigitPressed('0'),
+        ),
         _KeyboardKey(
           icon: Symbols.backspace,
+          semanticLabel: 'Delete last digit',
           onPressed: onBackspacePressed,
           opacity: 0.8,
         ),
@@ -289,12 +299,14 @@ class _PinKeyboard extends StatelessWidget {
 class _KeyboardKey extends StatelessWidget {
   final String? label;
   final IconData? icon;
+  final String semanticLabel;
   final VoidCallback onPressed;
   final double opacity;
 
   const _KeyboardKey({
     this.label,
     this.icon,
+    required this.semanticLabel,
     required this.onPressed,
     this.opacity = 1.0,
   });
@@ -305,8 +317,9 @@ class _KeyboardKey extends StatelessWidget {
 
     return Opacity(
       opacity: opacity,
-      child: Material(
-        color: Colors.transparent,
+      child: Semantics(
+        button: true,
+        label: semanticLabel,
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(DesignSystem.radiusMax),

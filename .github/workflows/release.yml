@@ -36,12 +36,12 @@ jobs:
       - run: flutter pub get
 
       # build release apk
-      - run: flutter build apk --release
+      - run: flutter build apk --release --split-per-abi
 
       # create github release + attach apk
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

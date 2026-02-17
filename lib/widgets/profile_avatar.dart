@@ -23,18 +23,23 @@ class ProfileAvatarButton extends StatelessWidget {
       child: Center(
         child: Material(
           color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            customBorder: const CircleBorder(),
-            child: CircleAvatar(
-              radius: radius,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              backgroundImage: hasImage ? NetworkImage(imageUrl!) : null,
-              onBackgroundImageError: hasImage
-                  ? (exception, stackTrace) =>
-                        debugPrint('Avatar error: $exception')
-                  : null,
-              child: _buildFallback(colorScheme),
+          child: Semantics(
+            label: 'Open profile and settings',
+            button: true,
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: CircleAvatar(
+                radius: radius,
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                backgroundImage: hasImage ? NetworkImage(imageUrl!) : null,
+                onBackgroundImageError: hasImage
+                    ? (exception, stackTrace) =>
+                          debugPrint('Avatar error: $exception')
+                    : null,
+                // B1: If hasImage is true, child must be null so the image isn't obscured
+                child: hasImage ? null : _buildFallback(colorScheme),
+              ),
             ),
           ),
         ),

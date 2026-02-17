@@ -52,12 +52,6 @@ class _ProgressGridState extends State<ProgressGrid> {
     // Column index in a 7-row grid
     final columnIndex = totalIndex ~/ 7;
 
-    // We'll calculate the exact scroll offset in the build method's LayoutBuilder
-    // or just use a slightly more robust estimation here.
-    // For now, let's stick to the strategy of using addPostFrameCallback.
-
-    // To be perfectly accurate, we need the cellSize from LayoutBuilder.
-    // Let's store it.
     if (_lastCellSize > 0) {
       final scrollOffset = columnIndex * (_lastCellSize + _spacing);
       if (_scrollController.hasClients) {
@@ -89,8 +83,6 @@ class _ProgressGridState extends State<ProgressGrid> {
 
               if (_lastCellSize != cellSize) {
                 _lastCellSize = cellSize;
-                // If size changes, we might want to re-scroll,
-                // but let's just do it once on load for now.
                 WidgetsBinding.instance.addPostFrameCallback(
                   (_) => _scrollToToday(),
                 );
@@ -151,55 +143,52 @@ class _ProgressGridState extends State<ProgressGrid> {
   Widget _buildDayCell(BuildContext context, DayProgress day) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isToday = day.status == DayStatus.today;
 
-    return GestureDetector(
-      onTap: () => widget.onDayTap(day),
-      child: TweenAnimationBuilder<double>(
-        duration: const Duration(milliseconds: 400),
-        tween: Tween(begin: 0.0, end: 1.0),
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: Container(
-              decoration: BoxDecoration(
-                color: _getColor(day.status, colorScheme),
-                borderRadius: BorderRadius.circular(8),
-                border: day.status == DayStatus.today
-                    ? Border.all(color: colorScheme.primary, width: 2.5)
-                    : null,
-                boxShadow: day.status == DayStatus.today
-                    ? [
-                        BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.5),
-                          blurRadius: 12,
-                          spreadRadius: 3,
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: day.dayNumber != null && day.dayNumber! <= 100
-                  ? Center(
-                      child: Text(
-                        '${day.dayNumber}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: day.status == DayStatus.active
-                              ? colorScheme.onPrimary
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-          );
-        },
+    return Semantics(
+      label: 'Day ${day.dayNumber}, ${day.status.name}',
+      button: true,
+      child: InkWell(
+        onTap: () => widget.onDayTap(day),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _getColor(day.status, colorScheme),
+            borderRadius: BorderRadius.circular(8),
+            border: isToday
+                ? Border.all(color: colorScheme.primary, width: 2.5)
+                : null,
+            boxShadow: isToday
+                ? [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.5),
+                      blurRadius: 12,
+                      spreadRadius: 3,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+          ),
+          child: day.dayNumber != null && day.dayNumber! <= 100
+              ? Center(
+                  child: Text(
+                    '${day.dayNumber}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: day.status == DayStatus.active
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              : null,
+        ),
       ),
     );
   }

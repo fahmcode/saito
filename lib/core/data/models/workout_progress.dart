@@ -1,9 +1,9 @@
 import 'package:hive/hive.dart';
 
-part 'user_progress.g.dart';
+part 'workout_progress.g.dart';
 
-@HiveType(typeId: 0)
-class UserProgress extends HiveObject {
+@HiveType(typeId: 1)
+class WorkoutProgress extends HiveObject {
   @HiveField(0)
   int currentDay;
 
@@ -14,56 +14,48 @@ class UserProgress extends HiveObject {
   DateTime lastWorkoutDate;
 
   @HiveField(3)
-  Map<int, List<int>> dailyVolume; // Day -> [Set1, Set2, ...]
+  Map<int, List<int>> dailyVolume;
 
   @HiveField(4)
-  Map<String, int> baselineReps; // ExerciseType/Id -> reps
+  Map<String, int> baselineReps;
 
   @HiveField(5)
   bool hasSetBaseline;
 
   @HiveField(6)
-  bool audioEnabled;
-
-  @HiveField(7)
-  bool hapticsEnabled;
-
-  @HiveField(8)
-  bool securityEnabled;
-
-  @HiveField(9)
-  String? securityPin;
-
-  @HiveField(10)
-  bool biometricEnabled;
-
-  @HiveField(11)
-  int lockDurationMinutes; // 0 for immediate
-
-  @HiveField(12)
-  String themeMode; // 'system', 'light', 'dark'
-
-  @HiveField(13)
   DateTime? startDate;
 
-  UserProgress({
+  WorkoutProgress({
     this.currentDay = 1,
     this.streak = 0,
     required this.lastWorkoutDate,
     this.hasSetBaseline = false,
-    this.audioEnabled = true,
-    this.hapticsEnabled = true,
-    this.securityEnabled = false,
-    this.biometricEnabled = false,
-    this.securityPin,
-    this.lockDurationMinutes = 0,
-    this.themeMode = 'system',
     this.startDate,
     Map<int, List<int>>? dailyVolume,
     Map<String, int>? baselineReps,
   }) : dailyVolume = dailyVolume ?? {},
        baselineReps =
            baselineReps ?? {'armor': 20, 'foundation': 20, 'shred': 10};
+
+  WorkoutProgress copyWith({
+    int? currentDay,
+    int? streak,
+    DateTime? lastWorkoutDate,
+    Map<int, List<int>>? dailyVolume,
+    Map<String, int>? baselineReps,
+    bool? hasSetBaseline,
+    DateTime? startDate,
+  }) {
+    return WorkoutProgress(
+      currentDay: currentDay ?? this.currentDay,
+      streak: streak ?? this.streak,
+      lastWorkoutDate: lastWorkoutDate ?? this.lastWorkoutDate,
+      dailyVolume: dailyVolume ?? this.dailyVolume,
+      baselineReps: baselineReps ?? this.baselineReps,
+      hasSetBaseline: hasSetBaseline ?? this.hasSetBaseline,
+      startDate: startDate ?? this.startDate,
+    );
+  }
 
   // Rank logic
   String get rank {

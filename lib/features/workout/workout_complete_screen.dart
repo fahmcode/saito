@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:saito/core/config/design_system.dart';
+import 'package:saito/core/data/models/workout_progress.dart';
+import 'package:saito/core/data/data_sources/quote_data.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:saito/features/workout/scale_button.dart';
 
 class WorkoutCompleteScreen extends StatefulWidget {
-  final int day;
+  final int completedDay;
+  final WorkoutProgress progress;
 
-  const WorkoutCompleteScreen({super.key, required this.day});
+  const WorkoutCompleteScreen({
+    super.key,
+    required this.completedDay,
+    required this.progress,
+  });
 
   @override
   State<WorkoutCompleteScreen> createState() => _WorkoutCompleteScreenState();
@@ -17,217 +25,218 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
   @override
   void initState() {
     super.initState();
-    _playSuccessEffects();
+    _triggerHaptic();
   }
 
-  void _playSuccessEffects() async {
-    await Future.delayed(200.ms);
+  void _triggerHaptic() {
     HapticFeedback.heavyImpact();
-    await Future.delayed(400.ms);
-    HapticFeedback.lightImpact();
-    await Future.delayed(100.ms);
-    HapticFeedback.mediumImpact();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) HapticFeedback.mediumImpact();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final quote = QuoteData.getQuoteForDay(widget.completedDay);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: DesignSystem.spacingL,
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              children: [
+                const Spacer(flex: 2),
+                // Trophy/Celebration Icon
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: DesignSystem.saitoRed.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Symbols.trophy,
+                      size: 56,
+                      color: DesignSystem.saitoRed,
+                      fill: 1,
+                    ),
+                  ),
+                ).animate().scale(
+                  begin: const Offset(0.9, 0.9),
+                  duration: 400.ms,
+                  curve: Curves.easeOutCubic,
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Celebration Hero
-                    Container(
-                          width: 140,
-                          height: 140,
-                          decoration: ShapeDecoration(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.1,
-                            ),
-                            shape: const StarBorder(
-                              points: 8,
-                              innerRadiusRatio: 0.85,
-                              pointRounding: 0.4,
-                            ),
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.colorScheme.primary.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Symbols.trophy,
-                                size: 40,
-                                color: theme.colorScheme.onPrimary,
-                                fill: 1,
-                              ),
-                            ),
-                          ),
-                        )
-                        .animate()
-                        .scale(duration: 600.ms, curve: Curves.elasticOut)
-                        .shimmer(delay: 800.ms, duration: 1200.ms),
-
-                    const SizedBox(height: DesignSystem.spacingXXL),
-
-                    Text(
-                          'DAY ${widget.day} COMPLETE',
-                          style: theme.textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -1,
-                            height: 1,
-                          ),
-                        )
-                        .animate()
-                        .fadeIn(delay: 400.ms)
-                        .slideY(begin: 0.2, end: 0),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      'YOUR FORTRESS IS GROWING STRONGER.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
+                const SizedBox(height: 48),
+                Text(
+                      'Day ${widget.completedDay}',
+                      style: theme.textTheme.displayMedium?.copyWith(
+                        fontWeight: FontWeight.w200,
+                        fontSize: 64,
+                        letterSpacing: -2,
+                        color: theme.colorScheme.onSurface,
                       ),
-                    ).animate().fadeIn(delay: 600.ms),
-
-                    const SizedBox(height: DesignSystem.spacingHero),
-
-                    // Grouped Stats section
-                    Container(
-                          padding: const EdgeInsets.all(DesignSystem.spacingXL),
+                    )
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .slideY(begin: 0.02, end: 0),
+                Text(
+                  'Conquered',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0,
+                  ),
+                ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+                const Spacer(flex: 3),
+                _buildStats(context),
+                const Spacer(),
+                _buildQuote(context, quote),
+                const Spacer(flex: 2),
+                SizedBox(
+                      width: double.infinity,
+                      height: 64,
+                      child: ScaleButton(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.of(
+                            context,
+                          ).popUntil((route) => route.isFirst);
+                        },
+                        child: Container(
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: theme.colorScheme.outlineVariant
-                                  .withValues(alpha: 0.3),
-                              width: 0.5,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildStat(
-                                context,
-                                'STATUS',
-                                'ELITE',
-                                Symbols.check_circle,
-                              ),
-                              _buildDivider(theme),
-                              _buildStat(
-                                context,
-                                'REWARD',
-                                'ASHES',
-                                Symbols.local_fire_department,
-                              ),
-                              _buildDivider(theme),
-                              _buildStat(
-                                context,
-                                'STREAK',
-                                'EARNED',
-                                Symbols.bolt,
+                            color: DesignSystem.saitoRed,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: DesignSystem.saitoRed.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                        )
-                        .animate()
-                        .fadeIn(delay: 800.ms)
-                        .slideY(begin: 0.1, end: 0),
-                  ],
-                ),
-              ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Continue journey',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(delay: 400.ms, duration: 400.ms)
+                    .slideY(begin: 0.02, end: 0),
+                const SizedBox(height: 16),
+              ],
             ),
-
-            // Fixed Footer Action
-            Padding(
-              padding: const EdgeInsets.all(DesignSystem.spacingL),
-              child: SizedBox(
-                width: double.infinity,
-                height: 64,
-                child: FilledButton(
-                  onPressed: () {
-                    HapticFeedback.mediumImpact();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                  style: FilledButton.styleFrom(shape: const StadiumBorder()),
-                  child: const Text(
-                    'CONTINUE JOURNEY',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-            ).animate().fadeIn(delay: 1000.ms),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDivider(ThemeData theme) {
+  Widget _buildStats(BuildContext context) {
     return Container(
-      height: 40,
-      width: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-    );
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _StatItem(
+            label: 'Rank',
+            value: widget.progress.rank,
+            icon: Symbols.military_tech,
+          ),
+          _StatItem(
+            label: 'Progress',
+            value: '${widget.completedDay}/100',
+            icon: Symbols.calendar_today,
+          ),
+          _StatItem(
+            label: 'Streak',
+            value: '${widget.progress.streak}',
+            icon: Symbols.local_fire_department,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 600.ms, duration: 400.ms);
   }
 
-  Widget _buildStat(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
+  Widget _buildQuote(BuildContext context, Quote quote) {
     final theme = Theme.of(context);
-    return Expanded(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          Icon(icon, color: theme.colorScheme.primary, size: 28),
-          const SizedBox(height: 8),
           Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.outline,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+            '"${quote.text}"',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              height: 1.6,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 16),
           Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
+            '— ${quote.author}',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              letterSpacing: 1,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _StatItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Icon(
+          icon,
+          size: 28,
+          color: DesignSystem.saitoRed.withValues(alpha: 0.8),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

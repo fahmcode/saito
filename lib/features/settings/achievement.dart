@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:saito/core/config/design_system.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:saito/widgets/modern_app_bar.dart';
+import 'package:saito/core/config/design_system.dart';
+import 'package:saito/core/logic/cubit/workout_cubit.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 class AchievementScreen extends StatelessWidget {
@@ -10,260 +12,252 @@ class AchievementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    const int totalUnlocked = 4;
-    const int totalBadges = 12;
+    return BlocSelector<WorkoutCubit, WorkoutState, int>(
+      selector: (state) => state.progress.currentDay,
+      builder: (context, currentDay) {
+        final achievements = _getAchievements(currentDay);
+        final unlocked = achievements.where((a) => a.isUnlocked).toList();
+        final locked = achievements.where((a) => !a.isUnlocked).toList();
 
-    return Scaffold(
-      appBar: const ModernAppBar(title: 'Milestones'),
-      backgroundColor: theme.colorScheme.surface,
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _buildAchievementHero(context, totalUnlocked, totalBadges),
-          Padding(
-            padding: const EdgeInsets.all(DesignSystem.spacingL),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return Scaffold(
+          backgroundColor: theme.colorScheme.surface,
+          appBar: const ModernAppBar(title: 'Milestones'),
+          body: SafeArea(
+            child: ListView(
+              padding: DesignSystem.pagePadding(DesignSystem.spacingL),
               children: [
-                _buildSectionHeader(context, 'UNLOCKED', totalUnlocked),
-                const SizedBox(height: DesignSystem.spacingM),
-                _buildBadgeGrid(context, true),
-                const SizedBox(height: DesignSystem.spacingXL),
-                _buildSectionHeader(
+                _buildHeroSection(
                   context,
-                  'LOCKED',
-                  totalBadges - totalUnlocked,
+                  unlocked.length,
+                  achievements.length,
                 ),
-                const SizedBox(height: DesignSystem.spacingM),
-                _buildBadgeGrid(context, false),
+                const SizedBox(height: DesignSystem.spacingXL),
+                if (unlocked.isNotEmpty) ...[
+                  _sectionTitle(context, 'UNLOCKED'),
+                  const SizedBox(height: DesignSystem.spacingM),
+                  _buildGrid(context, unlocked),
+                  const SizedBox(height: DesignSystem.spacingXL),
+                ],
+                if (locked.isNotEmpty) ...[
+                  _sectionTitle(context, 'LOCKED'),
+                  const SizedBox(height: DesignSystem.spacingM),
+                  _buildGrid(context, locked),
+                ],
                 const SizedBox(height: DesignSystem.spacingXXL),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAchievementHero(BuildContext context, int unlocked, int total) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        DesignSystem.spacingL,
-        DesignSystem.spacingXL,
-        DesignSystem.spacingL,
-        DesignSystem.spacingXXL,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hall of Fame',
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$unlocked OF $total MILESTONES'.toUpperCase(),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Every drop of sweat is a brick in your fortress. Collect milestones to showcase your path to mastery.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(BuildContext context, String title, int count) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.outline,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(
-              alpha: 0.5,
-            ),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            '$count',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBadgeGrid(BuildContext context, bool unlocked) {
-    final badges = unlocked
-        ? [
-            ('Initiation', Symbols.bolt, 'Start the 100-day journey'),
-            (
-              'First Week',
-              Symbols.calendar_today,
-              'Complete 7 consecutive days',
-            ),
-            ('Armor Up', Symbols.shield, 'Complete 5 Armor sessions'),
-            (
-              'Iron Will',
-              Symbols.fitness_center,
-              'Complete a workout with maximum intensity',
-            ),
-          ]
-        : [
-            ('Halfway there', Symbols.star, 'Reach day 50'),
-            ('Century Club', Symbols.military_tech, 'Complete all 100 days'),
-            (
-              'King of Shred',
-              Symbols.local_fire_department,
-              'Unlock Shred Phase 3',
-            ),
-            ('Unstoppable', Symbols.trophy, 'Complete 30 days without rest'),
-            ('Early Bird', Symbols.wb_sunny, 'Workout before 7 AM'),
-            ('Night Owl', Symbols.dark_mode, 'Workout after 10 PM'),
-            ('Mastery', Symbols.diamond, 'Perform 500 total sets'),
-            ('Resilience', Symbols.healing, 'Complete recovery phase twice'),
-          ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: DesignSystem.spacingM,
-        mainAxisSpacing: DesignSystem.spacingM,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: badges.length,
-      itemBuilder: (context, index) {
-        final badge = badges[index];
-        return _buildBadgeTile(context, badge.$1, badge.$2, badge.$3, unlocked);
+        );
       },
     );
   }
 
-  Widget _buildBadgeTile(
-    BuildContext context,
-    String title,
-    IconData icon,
-    String desc,
-    bool unlocked,
-  ) {
+  Widget _buildHeroSection(BuildContext context, int unlocked, int total) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(DesignSystem.spacingM),
-      decoration: BoxDecoration(
-        color: unlocked
-            ? theme.colorScheme.surface
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: unlocked
-              ? theme.colorScheme.outlineVariant.withValues(alpha: 0.3)
-              : Colors.transparent,
-          width: 0.5,
-        ),
-        boxShadow: unlocked
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: unlocked
-                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                  : theme.colorScheme.outline.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
+    return Semantics(
+      label: '$unlocked of $total milestones unlocked',
+      child: Container(
+        padding: const EdgeInsets.all(DesignSystem.spacingXL),
+        decoration: DesignSystem.cardDecoration(context),
+        child: Row(
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                Symbols.rewarded_ads,
+                size: 48,
+                color: theme.colorScheme.primary,
+                fill: 1,
+              ),
             ),
-            child: Icon(
-              icon,
-              size: 32,
+            const SizedBox(width: DesignSystem.spacingL),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$unlocked / $total',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  'Milestones Unlocked',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String title) {
+    final theme = Theme.of(context);
+    return Text(
+      title,
+      style: theme.textTheme.labelLarge?.copyWith(
+        letterSpacing: 2,
+        color: theme.colorScheme.outline,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, List<_Achievement> achievements) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: DesignSystem.spacingM,
+        crossAxisSpacing: DesignSystem.spacingM,
+        childAspectRatio: 0.85,
+      ),
+      itemCount: achievements.length,
+      itemBuilder: (context, index) {
+        final a = achievements[index];
+        return _BadgeCard(achievement: a);
+      },
+    );
+  }
+
+  List<_Achievement> _getAchievements(int currentDay) {
+    return [
+      _Achievement(
+        title: 'Initiation',
+        icon: Symbols.star,
+        dayRequired: 1,
+        description: 'Complete your first workout',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'Week Warrior',
+        icon: Symbols.calendar_month,
+        dayRequired: 7,
+        description: 'Survive 7 days',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'Iron Will',
+        icon: Symbols.shield,
+        dayRequired: 14,
+        description: '14-day streak',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'Ascension',
+        icon: Symbols.trending_up,
+        dayRequired: 25,
+        description: 'Reach C-Class Hero',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'Half Century',
+        icon: Symbols.flag,
+        dayRequired: 50,
+        description: 'Reach the halfway point',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'S-Class',
+        icon: Symbols.military_tech,
+        dayRequired: 75,
+        description: 'Reach S-Class Hero rank',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'Century Club',
+        icon: Symbols.trophy,
+        dayRequired: 100,
+        description: 'Complete 100 days',
+        currentDay: currentDay,
+      ),
+      _Achievement(
+        title: 'Saitama',
+        icon: Symbols.bolt,
+        dayRequired: 100,
+        description: 'Become One Punch Man',
+        currentDay: currentDay,
+      ),
+    ];
+  }
+}
+
+class _Achievement {
+  final String title;
+  final IconData icon;
+  final int dayRequired;
+  final String description;
+  final int currentDay;
+
+  _Achievement({
+    required this.title,
+    required this.icon,
+    required this.dayRequired,
+    required this.description,
+    required this.currentDay,
+  });
+
+  bool get isUnlocked => currentDay > dayRequired;
+}
+
+class _BadgeCard extends StatelessWidget {
+  final _Achievement achievement;
+
+  const _BadgeCard({required this.achievement});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final unlocked = achievement.isUnlocked;
+
+    return Semantics(
+      label:
+          '${achievement.title} badge, ${unlocked ? "unlocked" : "locked"}. ${achievement.description}.',
+      child: Container(
+        padding: const EdgeInsets.all(DesignSystem.spacingM),
+        decoration: BoxDecoration(
+          color: unlocked
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
+          borderRadius: BorderRadius.circular(DesignSystem.radiusM),
+          border: Border.all(
+            color: unlocked
+                ? theme.colorScheme.primary.withValues(alpha: 0.3)
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              achievement.icon,
+              size: 28,
               color: unlocked
                   ? theme.colorScheme.primary
-                  : theme.colorScheme.outline.withValues(alpha: 0.3),
+                  : theme.colorScheme.outline.withValues(alpha: 0.4),
               fill: unlocked ? 1 : 0,
             ),
-          ),
-          const SizedBox(height: DesignSystem.spacingM),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.2,
-              color: unlocked
-                  ? theme.colorScheme.onSurface
-                  : theme.colorScheme.outline,
+            const SizedBox(height: DesignSystem.spacingS),
+            Text(
+              achievement.title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: unlocked
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.outline,
+                letterSpacing: 0.5,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            desc,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-              fontSize: 10,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
