@@ -144,6 +144,8 @@ class _ProgressGridState extends State<ProgressGrid> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isToday = day.status == DayStatus.today;
+    final backgroundColor = _getColor(day.status, colorScheme);
+    final foregroundColor = _getOnColor(day.status, colorScheme);
 
     return Semantics(
       label: 'Day ${day.dayNumber}, ${day.status.name}',
@@ -152,18 +154,19 @@ class _ProgressGridState extends State<ProgressGrid> {
         onTap: () => widget.onDayTap(day),
         borderRadius: BorderRadius.circular(8),
         child: Container(
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: _getColor(day.status, colorScheme),
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
-            border: isToday
-                ? Border.all(color: colorScheme.primary, width: 2.5)
-                : null,
             boxShadow: isToday
                 ? [
                     BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: 0.5),
-                      blurRadius: 12,
-                      spreadRadius: 3,
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.45,
+                      ),
+                      blurRadius: 14,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 6),
                     ),
                   ]
                 : [
@@ -181,9 +184,7 @@ class _ProgressGridState extends State<ProgressGrid> {
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: day.status == DayStatus.active
-                          ? colorScheme.onPrimary
-                          : colorScheme.onSurfaceVariant,
+                      color: foregroundColor,
                     ),
                   ),
                 )
@@ -200,7 +201,18 @@ class _ProgressGridState extends State<ProgressGrid> {
       case DayStatus.today:
         return colorScheme.primaryContainer;
       case DayStatus.inactive:
-        return colorScheme.surfaceContainerHighest.withValues(alpha: 0.4);
+        return colorScheme.surfaceContainerHighest.withValues(alpha: 0.48);
+    }
+  }
+
+  Color _getOnColor(DayStatus status, ColorScheme colorScheme) {
+    switch (status) {
+      case DayStatus.active:
+        return colorScheme.onPrimary;
+      case DayStatus.today:
+        return colorScheme.onPrimaryContainer;
+      case DayStatus.inactive:
+        return colorScheme.onSurfaceVariant;
     }
   }
 }

@@ -1,18 +1,27 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:saito/features/home/home_screen.dart';
 import 'package:saito/core/config/design_system.dart';
-import 'package:saito/core/logic/cubit/workout_cubit.dart';
+import 'package:saito/core/data/repositories/app_repository.dart';
+import 'package:saito/core/data/sources/database.dart';
+import 'package:saito/core/data/sources/sync_service.dart';
 import 'package:saito/core/logic/cubit/preferences_cubit.dart';
 import 'package:saito/core/logic/cubit/security_cubit.dart';
+import 'package:saito/core/logic/cubit/workout_cubit.dart';
+import 'package:saito/features/drive/connect_drive_screen.dart';
+import 'package:saito/features/drive/drive_connect_cubit.dart';
+import 'package:saito/features/home/home_screen.dart';
 import 'package:saito/features/onboarding/onboarding_screen.dart';
 import 'package:saito/features/settings/security_lock.dart';
-import 'package:saito/core/data/repositories/app_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:saito/widgets/blocking_splash.dart';
 
 class SaitoApp extends StatefulWidget {
-  final AppRepository repository;
-  const SaitoApp({super.key, required this.repository});
+  final AppDatabase db;
+  final SharedPreferences prefs;
+
+  const SaitoApp({super.key, required this.db, required this.prefs});
 
   @override
   State<SaitoApp> createState() => _SaitoAppState();
@@ -27,12 +36,6 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final security = context.read<SecurityCubit>().state.config;
-      if (security.securityEnabled) {
-        setState(() => _isLocked = true);
-      }
-    });
   }
 
   @override
@@ -44,41 +47,19 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      _backgroundTime = DateTime.now();
+      // Immediate lock when security is enabled
+      setState(() {
+        _isLocked = true;
+        _hasUnlockedThisSession = false;
+        _backgroundTime = DateTime.now();
+      });
     } else if (state == AppLifecycleState.resumed) {
       _checkLockStatus();
     }
   }
 
   void _checkLockStatus() {
-    final config = context.read<SecurityCubit>().state.config;
-    if (!config.securityEnabled) {
-      setState(() {
-        _isLocked = false;
-        _hasUnlockedThisSession = false;
-      });
-      return;
-    }
-
-    if (_hasUnlockedThisSession && _backgroundTime == null) {
-      return;
-    }
-
-    if (_backgroundTime != null) {
-      final durationSinceBackground = DateTime.now().difference(
-        _backgroundTime!,
-      );
-      final lockDuration = Duration(minutes: config.lockDurationMinutes);
-
-      if (config.lockDurationMinutes == 0 ||
-          durationSinceBackground >= lockDuration) {
-        setState(() {
-          _isLocked = true;
-          _hasUnlockedThisSession = false;
-        });
-      }
-      _backgroundTime = null;
-    }
+    setState(() {});
   }
 
   void _onUnlockSuccess() {
@@ -88,64 +69,164 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _migrateLocalWorkouts(String accountId) async {
+    if (accountId == 'local') return;
+
+    final localRows = await (widget.db.select(
+      widget.db.workoutProgressTable,
+    )..where((t) => t.userId.equals('local'))).get();
+    if (localRows.isEmpty) return;
+
+    final existing = await (widget.db.select(
+      widget.db.workoutProgressTable,
+    )..where((t) => t.userId.equals(accountId))).get();
+    if (existing.isNotEmpty) return;
+
+    for (final row in localRows) {
+      await widget.db
+          .into(widget.db.workoutProgressTable)
+          .insertOnConflictUpdate(
+            WorkoutProgressTableCompanion(
+              id: Value(row.id),
+              userId: Value(accountId),
+              currentDay: Value(row.currentDay),
+              streak: Value(row.streak),
+              lastWorkoutDate: Value(row.lastWorkoutDate),
+              dailyVolume: Value(row.dailyVolume),
+              baselineReps: Value(row.baselineReps),
+              hasSetBaseline: Value(row.hasSetBaseline),
+              startDate: Value(row.startDate),
+              createdAt: Value(row.createdAt),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
-      providers: [RepositoryProvider.value(value: widget.repository)],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) => WorkoutCubit(widget.repository)..load(),
-          ),
-          BlocProvider(
-            create: (context) => PreferencesCubit(widget.repository)..load(),
-          ),
-          BlocProvider(
-            create: (context) => SecurityCubit(widget.repository)..load(),
-          ),
-        ],
-        child: BlocBuilder<PreferencesCubit, PreferencesState>(
-          buildWhen: (prev, curr) =>
-              prev.preferences.themeMode != curr.preferences.themeMode,
-          builder: (context, state) {
-            return MaterialApp(
-              title: 'Saito-100',
+    return BlocProvider(
+      create: (_) => DriveConnectCubit(),
+      child: BlocBuilder<DriveConnectCubit, DriveConnectState>(
+        builder: (context, driveState) {
+          final bool isWaiting = driveState is DriveConnecting;
+
+          if (isWaiting) {
+            return const MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: _buildLightTheme(),
-              darkTheme: _buildDarkTheme(),
-              themeMode: _resolveThemeMode(state.preferences.themeMode),
-              builder: (context, child) {
-                return Stack(
-                  children: [
-                    if (child != null) child,
-                    if (_isLocked &&
-                        context
-                            .read<SecurityCubit>()
-                            .state
-                            .config
-                            .securityEnabled)
-                      SecurityLockScreen(
-                        correctPin: context
-                            .read<SecurityCubit>()
-                            .state
-                            .config
-                            .securityPin,
-                        bioEnabled: context
-                            .read<SecurityCubit>()
-                            .state
-                            .config
-                            .biometricEnabled,
-                        onResult: (success) {
-                          if (success) _onUnlockSuccess();
-                        },
-                      ),
-                  ],
-                );
-              },
-              home: const _AppContainer(),
+              home: BlockingSplash(message: 'Connecting to Drive...'),
             );
-          },
-        ),
+          }
+
+          // Use local fallback if not connected
+          final String userId = driveState is DriveConnected
+              ? driveState.accountId
+              : 'local';
+          final bool offlineOnly = driveState is DriveConnected
+              ? driveState.offlineOnly
+              : true;
+
+          final driveSync = (driveState is DriveConnected && !offlineOnly)
+              ? DriveSyncService(
+                  widget.db,
+                  context.read<DriveConnectCubit>().signIn,
+                )
+              : null;
+
+          final repository = AppRepository(
+            db: widget.db,
+            userId: userId,
+            prefs: widget.prefs,
+            sync: driveSync,
+          );
+
+          // Trigger initial sync when online
+          if (driveSync != null) {
+            _migrateLocalWorkouts(
+              userId,
+            ).then((_) => driveSync.sync(userId).catchError((_) {}));
+          }
+
+          return MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider.value(value: repository),
+              if (driveSync != null)
+                RepositoryProvider<DriveSyncService>.value(value: driveSync),
+            ],
+            child: MultiBlocProvider(
+              key: ValueKey(userId),
+              providers: [
+                BlocProvider(
+                  create: (context) => WorkoutCubit(repository)..load(),
+                ),
+                BlocProvider(
+                  create: (context) => PreferencesCubit(repository)..load(),
+                ),
+                BlocProvider(
+                  create: (context) => SecurityCubit(repository)..load(),
+                ),
+              ],
+              child: BlocBuilder<PreferencesCubit, PreferencesState>(
+                buildWhen: (prev, curr) =>
+                    prev.preferences.themeMode != curr.preferences.themeMode,
+                builder: (context, state) {
+                  final securityState = context.watch<SecurityCubit>().state;
+                  final securityConfig = securityState.config;
+
+                  return MaterialApp(
+                    title: 'Saito-100',
+                    debugShowCheckedModeBanner: false,
+                    theme: _buildLightTheme(),
+                    darkTheme: _buildDarkTheme(),
+                    themeMode: _resolveThemeMode(state.preferences.themeMode),
+                    builder: (context, child) {
+                      // Handle initial lock state if enabled
+                      if (securityState.loaded &&
+                          securityConfig.securityEnabled &&
+                          !_hasUnlockedThisSession &&
+                          !_isLocked) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          setState(() => _isLocked = true);
+                        });
+                      }
+
+                      // Handle background lock timer
+                      if (securityState.loaded &&
+                          securityConfig.securityEnabled &&
+                          _backgroundTime != null &&
+                          !_isLocked) {
+                        _isLocked = true;
+                        _hasUnlockedThisSession = false;
+                        _backgroundTime = null;
+                      }
+
+                      return Stack(
+                        children: [
+                          if (child != null) child,
+                          if (securityConfig.securityEnabled && _isLocked)
+                            SecurityLockScreen(
+                              verifyPin: (pin) =>
+                                  context.read<SecurityCubit>().verifyPin(pin),
+                              bioEnabled: securityConfig.biometricEnabled,
+                              onResult: (success) {
+                                if (success) _onUnlockSuccess();
+                              },
+                            ),
+                        ],
+                      );
+                    },
+                    home: driveState is DriveError
+                        ? ConnectDriveScreen(
+                            error: driveState.message,
+                            errorDetails: driveState.details,
+                          )
+                        : const _AppContainer(),
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -176,10 +257,45 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
         onSecondary: DesignSystem.cleanWhite,
       ),
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
       appBarTheme: const AppBarTheme(
         backgroundColor: DesignSystem.cleanWhite,
         surfaceTintColor: Colors.transparent,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: const StadiumBorder(),
+          minimumSize: const Size(0, 56),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignSystem.radiusL),
+        ),
+        elevation: 0,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(DesignSystem.radiusXL),
+          ),
+        ),
+        showDragHandle: true,
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignSystem.radiusXL),
+        ),
       ),
     );
   }
@@ -199,10 +315,45 @@ class _SaitoAppState extends State<SaitoApp> with WidgetsBindingObserver {
         onSecondary: DesignSystem.cleanWhite,
       ),
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
       appBarTheme: const AppBarTheme(
         backgroundColor: DesignSystem.pureBlack,
         surfaceTintColor: Colors.transparent,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: const StadiumBorder(),
+          minimumSize: const Size(0, 56),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignSystem.radiusL),
+        ),
+        elevation: 0,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(DesignSystem.radiusXL),
+          ),
+        ),
+        showDragHandle: true,
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignSystem.radiusXL),
+        ),
       ),
     );
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:saito/core/config/design_system.dart';
 
 class RestView extends StatelessWidget {
   final int seconds;
@@ -43,8 +42,8 @@ class RestView extends StatelessWidget {
                             .colorScheme
                             .surfaceContainerHighest
                             .withValues(alpha: 0.5),
-                        valueColor: const AlwaysStoppedAnimation(
-                          DesignSystem.saitoRed,
+                        valueColor: AlwaysStoppedAnimation(
+                          theme.colorScheme.primary,
                         ),
                       ),
                     ),

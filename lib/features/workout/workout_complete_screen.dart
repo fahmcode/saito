@@ -55,14 +55,14 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: DesignSystem.saitoRed.withValues(alpha: 0.05),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.05),
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Symbols.trophy,
                       size: 56,
-                      color: DesignSystem.saitoRed,
+                      color: theme.colorScheme.primary,
                       fill: 1,
                     ),
                   ),
@@ -71,7 +71,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                   duration: 400.ms,
                   curve: Curves.easeOutCubic,
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: DesignSystem.spacingXXL),
                 Text(
                       'Day ${widget.completedDay}',
                       style: theme.textTheme.displayMedium?.copyWith(
@@ -97,37 +97,29 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                 const Spacer(),
                 _buildQuote(context, quote),
                 const Spacer(flex: 2),
-                SizedBox(
-                      width: double.infinity,
-                      height: 64,
-                      child: ScaleButton(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.of(
-                            context,
-                          ).popUntil((route) => route.isFirst);
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: DesignSystem.saitoRed,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: DesignSystem.saitoRed.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                ScaleButton(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(
+                            DesignSystem.radiusMax,
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Continue journey',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          boxShadow: DesignSystem.mediumShadow(context),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Continue journey',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onPrimary,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -135,7 +127,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                     .animate()
                     .fadeIn(delay: 400.ms, duration: 400.ms)
                     .slideY(begin: 0.02, end: 0),
-                const SizedBox(height: 16),
+                const SizedBox(height: DesignSystem.spacingM),
               ],
             ),
           ),
@@ -146,7 +138,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
 
   Widget _buildStats(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: DesignSystem.spacingM),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -185,7 +177,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
               height: 1.6,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: DesignSystem.spacingM),
           Text(
             '— ${quote.author}',
             style: theme.textTheme.labelMedium?.copyWith(
@@ -218,9 +210,9 @@ class _StatItem extends StatelessWidget {
         Icon(
           icon,
           size: 28,
-          color: DesignSystem.saitoRed.withValues(alpha: 0.8),
+          color: theme.colorScheme.primary.withValues(alpha: 0.8),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: DesignSystem.spacingM),
         Text(
           value,
           style: theme.textTheme.titleLarge?.copyWith(

@@ -57,7 +57,7 @@ class WorkoutFooter extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: DesignSystem.spacingM),
           ScaleButton(
             onTap:
                 onComplete, // onComplete handles both skipping and completing
@@ -65,21 +65,15 @@ class WorkoutFooter extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: DesignSystem.saitoRed,
+                color: theme.colorScheme.primary,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: DesignSystem.saitoRed.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: DesignSystem.mediumShadow(context),
               ),
               child: Icon(
                 isResting
                     ? Symbols.fast_forward
                     : (session.isLast ? Symbols.check : Symbols.arrow_forward),
-                color: Colors.white,
+                color: theme.colorScheme.onPrimary,
                 size: 32,
               ),
             ),

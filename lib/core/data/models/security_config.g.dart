@@ -21,13 +21,18 @@ class SecurityConfigAdapter extends TypeAdapter<SecurityConfig> {
       securityPin: fields[1] as String?,
       biometricEnabled: fields[2] as bool,
       lockDurationMinutes: fields[3] as int,
+      pinHash: fields[4] as String?,
+      pinSalt: fields[5] as String?,
+      pinIterations: fields[6] as int?,
+      failedAttempts: fields[7] as int,
+      nextRetryAt: fields[8] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SecurityConfig obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.securityEnabled)
       ..writeByte(1)
@@ -35,7 +40,17 @@ class SecurityConfigAdapter extends TypeAdapter<SecurityConfig> {
       ..writeByte(2)
       ..write(obj.biometricEnabled)
       ..writeByte(3)
-      ..write(obj.lockDurationMinutes);
+      ..write(obj.lockDurationMinutes)
+      ..writeByte(4)
+      ..write(obj.pinHash)
+      ..writeByte(5)
+      ..write(obj.pinSalt)
+      ..writeByte(6)
+      ..write(obj.pinIterations)
+      ..writeByte(7)
+      ..write(obj.failedAttempts)
+      ..writeByte(8)
+      ..write(obj.nextRetryAt);
   }
 
   @override

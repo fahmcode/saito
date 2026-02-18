@@ -10,6 +10,9 @@ import 'package:saito/features/settings/security_lock.dart';
 import 'package:saito/core/logic/cubit/security_cubit.dart';
 import 'package:saito/core/logic/cubit/preferences_cubit.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:saito/features/drive/drive_connect_cubit.dart';
+import 'package:saito/core/data/sources/sync_service.dart'
+    show DriveSyncService, SyncState, SyncStatus;
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -25,6 +28,7 @@ class SettingsScreen extends StatelessWidget {
         child: ListView(
           padding: DesignSystem.pagePadding(DesignSystem.spacingXL),
           children: [
+            _buildCloudSection(context),
             _buildEffectsSection(context),
             _buildSecuritySection(context),
             _buildPreferencesSection(context),
@@ -33,6 +37,218 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCloudSection(BuildContext context) {
+    return BlocBuilder<DriveConnectCubit, DriveConnectState>(
+      builder: (context, state) {
+        if (state is DriveConnected && !state.offlineOnly) {
+          final sync = context.read<DriveSyncService>();
+          return ValueListenableBuilder<SyncState>(
+            valueListenable: sync.state,
+            builder: (context, syncState, _) {
+              final theme = Theme.of(context);
+              final statusLabel = switch (syncState.status) {
+                SyncStatus.syncing => 'Syncing…',
+                SyncStatus.backoff => 'Retry in ${syncState.backoffSeconds}s',
+                SyncStatus.error => 'Error',
+                _ => 'Idle',
+              };
+              final statusColor = switch (syncState.status) {
+                SyncStatus.syncing => theme.colorScheme.primary,
+                SyncStatus.backoff => theme.colorScheme.tertiary,
+                SyncStatus.error => theme.colorScheme.error,
+                _ => theme.colorScheme.onSurfaceVariant,
+              };
+              final lastSync = syncState.lastSyncAt != null
+                  ? 'Last sync: ${syncState.lastSyncAt}'
+                  : 'Not synced yet';
+
+              return SettingsGroup(
+                title: 'CLOUD SYNC',
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.4,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(
+                                DesignSystem.spacingM,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  DesignSystem.radiusM,
+                                ),
+                              ),
+                              child: Icon(
+                                Symbols.cloud_done,
+                                color: theme.colorScheme.primary,
+                                weight: 600,
+                              ),
+                            ),
+                            const SizedBox(width: DesignSystem.spacingM),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Google Drive',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    state.email ?? 'Connected',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                statusLabel,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: DesignSystem.spacingM),
+                        Text(
+                          lastSync,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (syncState.error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: DesignSystem.spacingS,
+                            ),
+                            child: Text(
+                              syncState.error!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: DesignSystem.spacingS),
+                        Row(
+                          children: [
+                            FilledButton.tonal(
+                              onPressed:
+                                  (syncState.status == SyncStatus.backoff ||
+                                      syncState.status == SyncStatus.syncing)
+                                  ? null
+                                  : () async {
+                                      await sync.sync(state.accountId);
+                                      if (context.mounted &&
+                                          sync.state.value.status ==
+                                              SyncStatus.idle) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Sync complete'),
+                                          ),
+                                        );
+                                      }
+                                    },
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'Sync now',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            const SizedBox(width: DesignSystem.spacingM),
+                            Text(
+                              'Pending: ${syncState.pendingCount}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SettingsTile(
+                    icon: Symbols.logout,
+                    title: 'Disconnect Drive',
+                    iconColor: theme.colorScheme.error,
+                    onTap: () => context.read<DriveConnectCubit>().disconnect(),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+
+        return SettingsGroup(
+          title: 'CLOUD SYNC',
+          children: [
+            SettingsTile(
+              icon: Symbols.cloud_sync,
+              title: 'Not Connected',
+              subtitle: 'Back up workouts to Google Drive',
+              onTap: () => context.read<DriveConnectCubit>().connect(),
+            ),
+            SettingsTile(
+              icon: Symbols.offline_pin,
+              title: 'Offline Mode',
+              subtitle: 'Use this device only',
+              trailing: Switch(
+                value: state is DriveConnected && state.offlineOnly,
+                onChanged: (v) {
+                  if (v) {
+                    context.read<DriveConnectCubit>().useOfflineOnly();
+                  } else {
+                    context.read<DriveConnectCubit>().connect();
+                  }
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -187,6 +403,7 @@ class SettingsScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SecurityLockScreen(
+          verifyPin: (pin) => context.read<SecurityCubit>().verifyPin(pin),
           isSetup: true,
           onResult: (success) {
             if (success) Navigator.pop(context);

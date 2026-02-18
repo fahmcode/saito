@@ -80,32 +80,24 @@ class RecoveryView extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
               const Spacer(flex: 3),
-              SizedBox(
-                    width: double.infinity,
-                    height: 64,
-                    child: ScaleButton(
-                      onTap: () => _confirmRecovery(context),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: DesignSystem.saitoRed,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: DesignSystem.saitoRed.withValues(
-                                alpha: 0.3,
-                              ),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+              ScaleButton(
+                    onTap: () => _confirmRecovery(context),
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(
+                          DesignSystem.radiusMax,
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Complete recovery',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        boxShadow: DesignSystem.mediumShadow(context),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Complete recovery',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onPrimary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

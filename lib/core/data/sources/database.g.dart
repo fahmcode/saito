@@ -1018,6 +1018,24 @@ class $SecurityConfigTableTable extends SecurityConfigTable
   late final GeneratedColumn<String> securityPin = GeneratedColumn<String>(
       'security_pin', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _pinHashMeta =
+      const VerificationMeta('pinHash');
+  @override
+  late final GeneratedColumn<String> pinHash = GeneratedColumn<String>(
+      'pin_hash', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _pinSaltMeta =
+      const VerificationMeta('pinSalt');
+  @override
+  late final GeneratedColumn<String> pinSalt = GeneratedColumn<String>(
+      'pin_salt', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _pinIterationsMeta =
+      const VerificationMeta('pinIterations');
+  @override
+  late final GeneratedColumn<int> pinIterations = GeneratedColumn<int>(
+      'pin_iterations', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _biometricEnabledMeta =
       const VerificationMeta('biometricEnabled');
   @override
@@ -1036,6 +1054,20 @@ class $SecurityConfigTableTable extends SecurityConfigTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _failedAttemptsMeta =
+      const VerificationMeta('failedAttempts');
+  @override
+  late final GeneratedColumn<int> failedAttempts = GeneratedColumn<int>(
+      'failed_attempts', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _nextRetryAtMeta =
+      const VerificationMeta('nextRetryAt');
+  @override
+  late final GeneratedColumn<DateTime> nextRetryAt = GeneratedColumn<DateTime>(
+      'next_retry_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1058,8 +1090,13 @@ class $SecurityConfigTableTable extends SecurityConfigTable
         userId,
         securityEnabled,
         securityPin,
+        pinHash,
+        pinSalt,
+        pinIterations,
         biometricEnabled,
         lockDurationMinutes,
+        failedAttempts,
+        nextRetryAt,
         createdAt,
         updatedAt
       ];
@@ -1095,6 +1132,20 @@ class $SecurityConfigTableTable extends SecurityConfigTable
           securityPin.isAcceptableOrUnknown(
               data['security_pin']!, _securityPinMeta));
     }
+    if (data.containsKey('pin_hash')) {
+      context.handle(_pinHashMeta,
+          pinHash.isAcceptableOrUnknown(data['pin_hash']!, _pinHashMeta));
+    }
+    if (data.containsKey('pin_salt')) {
+      context.handle(_pinSaltMeta,
+          pinSalt.isAcceptableOrUnknown(data['pin_salt']!, _pinSaltMeta));
+    }
+    if (data.containsKey('pin_iterations')) {
+      context.handle(
+          _pinIterationsMeta,
+          pinIterations.isAcceptableOrUnknown(
+              data['pin_iterations']!, _pinIterationsMeta));
+    }
     if (data.containsKey('biometric_enabled')) {
       context.handle(
           _biometricEnabledMeta,
@@ -1106,6 +1157,18 @@ class $SecurityConfigTableTable extends SecurityConfigTable
           _lockDurationMinutesMeta,
           lockDurationMinutes.isAcceptableOrUnknown(
               data['lock_duration_minutes']!, _lockDurationMinutesMeta));
+    }
+    if (data.containsKey('failed_attempts')) {
+      context.handle(
+          _failedAttemptsMeta,
+          failedAttempts.isAcceptableOrUnknown(
+              data['failed_attempts']!, _failedAttemptsMeta));
+    }
+    if (data.containsKey('next_retry_at')) {
+      context.handle(
+          _nextRetryAtMeta,
+          nextRetryAt.isAcceptableOrUnknown(
+              data['next_retry_at']!, _nextRetryAtMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -1133,10 +1196,20 @@ class $SecurityConfigTableTable extends SecurityConfigTable
           .read(DriftSqlType.bool, data['${effectivePrefix}security_enabled'])!,
       securityPin: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}security_pin']),
+      pinHash: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}pin_hash']),
+      pinSalt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}pin_salt']),
+      pinIterations: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}pin_iterations']),
       biometricEnabled: attachedDatabase.typeMapping.read(
           DriftSqlType.bool, data['${effectivePrefix}biometric_enabled'])!,
       lockDurationMinutes: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}lock_duration_minutes'])!,
+      failedAttempts: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}failed_attempts'])!,
+      nextRetryAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}next_retry_at']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1156,8 +1229,13 @@ class SecurityConfigTableData extends DataClass
   final String userId;
   final bool securityEnabled;
   final String? securityPin;
+  final String? pinHash;
+  final String? pinSalt;
+  final int? pinIterations;
   final bool biometricEnabled;
   final int lockDurationMinutes;
+  final int failedAttempts;
+  final DateTime? nextRetryAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const SecurityConfigTableData(
@@ -1165,8 +1243,13 @@ class SecurityConfigTableData extends DataClass
       required this.userId,
       required this.securityEnabled,
       this.securityPin,
+      this.pinHash,
+      this.pinSalt,
+      this.pinIterations,
       required this.biometricEnabled,
       required this.lockDurationMinutes,
+      required this.failedAttempts,
+      this.nextRetryAt,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -1178,8 +1261,21 @@ class SecurityConfigTableData extends DataClass
     if (!nullToAbsent || securityPin != null) {
       map['security_pin'] = Variable<String>(securityPin);
     }
+    if (!nullToAbsent || pinHash != null) {
+      map['pin_hash'] = Variable<String>(pinHash);
+    }
+    if (!nullToAbsent || pinSalt != null) {
+      map['pin_salt'] = Variable<String>(pinSalt);
+    }
+    if (!nullToAbsent || pinIterations != null) {
+      map['pin_iterations'] = Variable<int>(pinIterations);
+    }
     map['biometric_enabled'] = Variable<bool>(biometricEnabled);
     map['lock_duration_minutes'] = Variable<int>(lockDurationMinutes);
+    map['failed_attempts'] = Variable<int>(failedAttempts);
+    if (!nullToAbsent || nextRetryAt != null) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1193,8 +1289,21 @@ class SecurityConfigTableData extends DataClass
       securityPin: securityPin == null && nullToAbsent
           ? const Value.absent()
           : Value(securityPin),
+      pinHash: pinHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pinHash),
+      pinSalt: pinSalt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pinSalt),
+      pinIterations: pinIterations == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pinIterations),
       biometricEnabled: Value(biometricEnabled),
       lockDurationMinutes: Value(lockDurationMinutes),
+      failedAttempts: Value(failedAttempts),
+      nextRetryAt: nextRetryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextRetryAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1208,9 +1317,14 @@ class SecurityConfigTableData extends DataClass
       userId: serializer.fromJson<String>(json['userId']),
       securityEnabled: serializer.fromJson<bool>(json['securityEnabled']),
       securityPin: serializer.fromJson<String?>(json['securityPin']),
+      pinHash: serializer.fromJson<String?>(json['pinHash']),
+      pinSalt: serializer.fromJson<String?>(json['pinSalt']),
+      pinIterations: serializer.fromJson<int?>(json['pinIterations']),
       biometricEnabled: serializer.fromJson<bool>(json['biometricEnabled']),
       lockDurationMinutes:
           serializer.fromJson<int>(json['lockDurationMinutes']),
+      failedAttempts: serializer.fromJson<int>(json['failedAttempts']),
+      nextRetryAt: serializer.fromJson<DateTime?>(json['nextRetryAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1223,8 +1337,13 @@ class SecurityConfigTableData extends DataClass
       'userId': serializer.toJson<String>(userId),
       'securityEnabled': serializer.toJson<bool>(securityEnabled),
       'securityPin': serializer.toJson<String?>(securityPin),
+      'pinHash': serializer.toJson<String?>(pinHash),
+      'pinSalt': serializer.toJson<String?>(pinSalt),
+      'pinIterations': serializer.toJson<int?>(pinIterations),
       'biometricEnabled': serializer.toJson<bool>(biometricEnabled),
       'lockDurationMinutes': serializer.toJson<int>(lockDurationMinutes),
+      'failedAttempts': serializer.toJson<int>(failedAttempts),
+      'nextRetryAt': serializer.toJson<DateTime?>(nextRetryAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1235,8 +1354,13 @@ class SecurityConfigTableData extends DataClass
           String? userId,
           bool? securityEnabled,
           Value<String?> securityPin = const Value.absent(),
+          Value<String?> pinHash = const Value.absent(),
+          Value<String?> pinSalt = const Value.absent(),
+          Value<int?> pinIterations = const Value.absent(),
           bool? biometricEnabled,
           int? lockDurationMinutes,
+          int? failedAttempts,
+          Value<DateTime?> nextRetryAt = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       SecurityConfigTableData(
@@ -1244,8 +1368,14 @@ class SecurityConfigTableData extends DataClass
         userId: userId ?? this.userId,
         securityEnabled: securityEnabled ?? this.securityEnabled,
         securityPin: securityPin.present ? securityPin.value : this.securityPin,
+        pinHash: pinHash.present ? pinHash.value : this.pinHash,
+        pinSalt: pinSalt.present ? pinSalt.value : this.pinSalt,
+        pinIterations:
+            pinIterations.present ? pinIterations.value : this.pinIterations,
         biometricEnabled: biometricEnabled ?? this.biometricEnabled,
         lockDurationMinutes: lockDurationMinutes ?? this.lockDurationMinutes,
+        failedAttempts: failedAttempts ?? this.failedAttempts,
+        nextRetryAt: nextRetryAt.present ? nextRetryAt.value : this.nextRetryAt,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1258,12 +1388,22 @@ class SecurityConfigTableData extends DataClass
           : this.securityEnabled,
       securityPin:
           data.securityPin.present ? data.securityPin.value : this.securityPin,
+      pinHash: data.pinHash.present ? data.pinHash.value : this.pinHash,
+      pinSalt: data.pinSalt.present ? data.pinSalt.value : this.pinSalt,
+      pinIterations: data.pinIterations.present
+          ? data.pinIterations.value
+          : this.pinIterations,
       biometricEnabled: data.biometricEnabled.present
           ? data.biometricEnabled.value
           : this.biometricEnabled,
       lockDurationMinutes: data.lockDurationMinutes.present
           ? data.lockDurationMinutes.value
           : this.lockDurationMinutes,
+      failedAttempts: data.failedAttempts.present
+          ? data.failedAttempts.value
+          : this.failedAttempts,
+      nextRetryAt:
+          data.nextRetryAt.present ? data.nextRetryAt.value : this.nextRetryAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1276,8 +1416,13 @@ class SecurityConfigTableData extends DataClass
           ..write('userId: $userId, ')
           ..write('securityEnabled: $securityEnabled, ')
           ..write('securityPin: $securityPin, ')
+          ..write('pinHash: $pinHash, ')
+          ..write('pinSalt: $pinSalt, ')
+          ..write('pinIterations: $pinIterations, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockDurationMinutes: $lockDurationMinutes, ')
+          ..write('failedAttempts: $failedAttempts, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1285,8 +1430,20 @@ class SecurityConfigTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, securityEnabled, securityPin,
-      biometricEnabled, lockDurationMinutes, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      userId,
+      securityEnabled,
+      securityPin,
+      pinHash,
+      pinSalt,
+      pinIterations,
+      biometricEnabled,
+      lockDurationMinutes,
+      failedAttempts,
+      nextRetryAt,
+      createdAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1295,8 +1452,13 @@ class SecurityConfigTableData extends DataClass
           other.userId == this.userId &&
           other.securityEnabled == this.securityEnabled &&
           other.securityPin == this.securityPin &&
+          other.pinHash == this.pinHash &&
+          other.pinSalt == this.pinSalt &&
+          other.pinIterations == this.pinIterations &&
           other.biometricEnabled == this.biometricEnabled &&
           other.lockDurationMinutes == this.lockDurationMinutes &&
+          other.failedAttempts == this.failedAttempts &&
+          other.nextRetryAt == this.nextRetryAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1307,8 +1469,13 @@ class SecurityConfigTableCompanion
   final Value<String> userId;
   final Value<bool> securityEnabled;
   final Value<String?> securityPin;
+  final Value<String?> pinHash;
+  final Value<String?> pinSalt;
+  final Value<int?> pinIterations;
   final Value<bool> biometricEnabled;
   final Value<int> lockDurationMinutes;
+  final Value<int> failedAttempts;
+  final Value<DateTime?> nextRetryAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1317,8 +1484,13 @@ class SecurityConfigTableCompanion
     this.userId = const Value.absent(),
     this.securityEnabled = const Value.absent(),
     this.securityPin = const Value.absent(),
+    this.pinHash = const Value.absent(),
+    this.pinSalt = const Value.absent(),
+    this.pinIterations = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockDurationMinutes = const Value.absent(),
+    this.failedAttempts = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1328,8 +1500,13 @@ class SecurityConfigTableCompanion
     required String userId,
     this.securityEnabled = const Value.absent(),
     this.securityPin = const Value.absent(),
+    this.pinHash = const Value.absent(),
+    this.pinSalt = const Value.absent(),
+    this.pinIterations = const Value.absent(),
     this.biometricEnabled = const Value.absent(),
     this.lockDurationMinutes = const Value.absent(),
+    this.failedAttempts = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1339,8 +1516,13 @@ class SecurityConfigTableCompanion
     Expression<String>? userId,
     Expression<bool>? securityEnabled,
     Expression<String>? securityPin,
+    Expression<String>? pinHash,
+    Expression<String>? pinSalt,
+    Expression<int>? pinIterations,
     Expression<bool>? biometricEnabled,
     Expression<int>? lockDurationMinutes,
+    Expression<int>? failedAttempts,
+    Expression<DateTime>? nextRetryAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1350,9 +1532,14 @@ class SecurityConfigTableCompanion
       if (userId != null) 'user_id': userId,
       if (securityEnabled != null) 'security_enabled': securityEnabled,
       if (securityPin != null) 'security_pin': securityPin,
+      if (pinHash != null) 'pin_hash': pinHash,
+      if (pinSalt != null) 'pin_salt': pinSalt,
+      if (pinIterations != null) 'pin_iterations': pinIterations,
       if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       if (lockDurationMinutes != null)
         'lock_duration_minutes': lockDurationMinutes,
+      if (failedAttempts != null) 'failed_attempts': failedAttempts,
+      if (nextRetryAt != null) 'next_retry_at': nextRetryAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1364,8 +1551,13 @@ class SecurityConfigTableCompanion
       Value<String>? userId,
       Value<bool>? securityEnabled,
       Value<String?>? securityPin,
+      Value<String?>? pinHash,
+      Value<String?>? pinSalt,
+      Value<int?>? pinIterations,
       Value<bool>? biometricEnabled,
       Value<int>? lockDurationMinutes,
+      Value<int>? failedAttempts,
+      Value<DateTime?>? nextRetryAt,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -1374,8 +1566,13 @@ class SecurityConfigTableCompanion
       userId: userId ?? this.userId,
       securityEnabled: securityEnabled ?? this.securityEnabled,
       securityPin: securityPin ?? this.securityPin,
+      pinHash: pinHash ?? this.pinHash,
+      pinSalt: pinSalt ?? this.pinSalt,
+      pinIterations: pinIterations ?? this.pinIterations,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       lockDurationMinutes: lockDurationMinutes ?? this.lockDurationMinutes,
+      failedAttempts: failedAttempts ?? this.failedAttempts,
+      nextRetryAt: nextRetryAt ?? this.nextRetryAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1397,11 +1594,26 @@ class SecurityConfigTableCompanion
     if (securityPin.present) {
       map['security_pin'] = Variable<String>(securityPin.value);
     }
+    if (pinHash.present) {
+      map['pin_hash'] = Variable<String>(pinHash.value);
+    }
+    if (pinSalt.present) {
+      map['pin_salt'] = Variable<String>(pinSalt.value);
+    }
+    if (pinIterations.present) {
+      map['pin_iterations'] = Variable<int>(pinIterations.value);
+    }
     if (biometricEnabled.present) {
       map['biometric_enabled'] = Variable<bool>(biometricEnabled.value);
     }
     if (lockDurationMinutes.present) {
       map['lock_duration_minutes'] = Variable<int>(lockDurationMinutes.value);
+    }
+    if (failedAttempts.present) {
+      map['failed_attempts'] = Variable<int>(failedAttempts.value);
+    }
+    if (nextRetryAt.present) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1422,8 +1634,13 @@ class SecurityConfigTableCompanion
           ..write('userId: $userId, ')
           ..write('securityEnabled: $securityEnabled, ')
           ..write('securityPin: $securityPin, ')
+          ..write('pinHash: $pinHash, ')
+          ..write('pinSalt: $pinSalt, ')
+          ..write('pinIterations: $pinIterations, ')
           ..write('biometricEnabled: $biometricEnabled, ')
           ..write('lockDurationMinutes: $lockDurationMinutes, ')
+          ..write('failedAttempts: $failedAttempts, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1948,8 +2165,13 @@ typedef $$SecurityConfigTableTableCreateCompanionBuilder
   required String userId,
   Value<bool> securityEnabled,
   Value<String?> securityPin,
+  Value<String?> pinHash,
+  Value<String?> pinSalt,
+  Value<int?> pinIterations,
   Value<bool> biometricEnabled,
   Value<int> lockDurationMinutes,
+  Value<int> failedAttempts,
+  Value<DateTime?> nextRetryAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -1960,8 +2182,13 @@ typedef $$SecurityConfigTableTableUpdateCompanionBuilder
   Value<String> userId,
   Value<bool> securityEnabled,
   Value<String?> securityPin,
+  Value<String?> pinHash,
+  Value<String?> pinSalt,
+  Value<int?> pinIterations,
   Value<bool> biometricEnabled,
   Value<int> lockDurationMinutes,
+  Value<int> failedAttempts,
+  Value<DateTime?> nextRetryAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -1989,6 +2216,15 @@ class $$SecurityConfigTableTableFilterComposer
   ColumnFilters<String> get securityPin => $composableBuilder(
       column: $table.securityPin, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get pinHash => $composableBuilder(
+      column: $table.pinHash, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get pinSalt => $composableBuilder(
+      column: $table.pinSalt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get pinIterations => $composableBuilder(
+      column: $table.pinIterations, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<bool> get biometricEnabled => $composableBuilder(
       column: $table.biometricEnabled,
       builder: (column) => ColumnFilters(column));
@@ -1996,6 +2232,13 @@ class $$SecurityConfigTableTableFilterComposer
   ColumnFilters<int> get lockDurationMinutes => $composableBuilder(
       column: $table.lockDurationMinutes,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get failedAttempts => $composableBuilder(
+      column: $table.failedAttempts,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -2026,6 +2269,16 @@ class $$SecurityConfigTableTableOrderingComposer
   ColumnOrderings<String> get securityPin => $composableBuilder(
       column: $table.securityPin, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get pinHash => $composableBuilder(
+      column: $table.pinHash, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get pinSalt => $composableBuilder(
+      column: $table.pinSalt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get pinIterations => $composableBuilder(
+      column: $table.pinIterations,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get biometricEnabled => $composableBuilder(
       column: $table.biometricEnabled,
       builder: (column) => ColumnOrderings(column));
@@ -2033,6 +2286,13 @@ class $$SecurityConfigTableTableOrderingComposer
   ColumnOrderings<int> get lockDurationMinutes => $composableBuilder(
       column: $table.lockDurationMinutes,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get failedAttempts => $composableBuilder(
+      column: $table.failedAttempts,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -2062,11 +2322,26 @@ class $$SecurityConfigTableTableAnnotationComposer
   GeneratedColumn<String> get securityPin => $composableBuilder(
       column: $table.securityPin, builder: (column) => column);
 
+  GeneratedColumn<String> get pinHash =>
+      $composableBuilder(column: $table.pinHash, builder: (column) => column);
+
+  GeneratedColumn<String> get pinSalt =>
+      $composableBuilder(column: $table.pinSalt, builder: (column) => column);
+
+  GeneratedColumn<int> get pinIterations => $composableBuilder(
+      column: $table.pinIterations, builder: (column) => column);
+
   GeneratedColumn<bool> get biometricEnabled => $composableBuilder(
       column: $table.biometricEnabled, builder: (column) => column);
 
   GeneratedColumn<int> get lockDurationMinutes => $composableBuilder(
       column: $table.lockDurationMinutes, builder: (column) => column);
+
+  GeneratedColumn<int> get failedAttempts => $composableBuilder(
+      column: $table.failedAttempts, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2109,8 +2384,13 @@ class $$SecurityConfigTableTableTableManager extends RootTableManager<
             Value<String> userId = const Value.absent(),
             Value<bool> securityEnabled = const Value.absent(),
             Value<String?> securityPin = const Value.absent(),
+            Value<String?> pinHash = const Value.absent(),
+            Value<String?> pinSalt = const Value.absent(),
+            Value<int?> pinIterations = const Value.absent(),
             Value<bool> biometricEnabled = const Value.absent(),
             Value<int> lockDurationMinutes = const Value.absent(),
+            Value<int> failedAttempts = const Value.absent(),
+            Value<DateTime?> nextRetryAt = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -2120,8 +2400,13 @@ class $$SecurityConfigTableTableTableManager extends RootTableManager<
             userId: userId,
             securityEnabled: securityEnabled,
             securityPin: securityPin,
+            pinHash: pinHash,
+            pinSalt: pinSalt,
+            pinIterations: pinIterations,
             biometricEnabled: biometricEnabled,
             lockDurationMinutes: lockDurationMinutes,
+            failedAttempts: failedAttempts,
+            nextRetryAt: nextRetryAt,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -2131,8 +2416,13 @@ class $$SecurityConfigTableTableTableManager extends RootTableManager<
             required String userId,
             Value<bool> securityEnabled = const Value.absent(),
             Value<String?> securityPin = const Value.absent(),
+            Value<String?> pinHash = const Value.absent(),
+            Value<String?> pinSalt = const Value.absent(),
+            Value<int?> pinIterations = const Value.absent(),
             Value<bool> biometricEnabled = const Value.absent(),
             Value<int> lockDurationMinutes = const Value.absent(),
+            Value<int> failedAttempts = const Value.absent(),
+            Value<DateTime?> nextRetryAt = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -2142,8 +2432,13 @@ class $$SecurityConfigTableTableTableManager extends RootTableManager<
             userId: userId,
             securityEnabled: securityEnabled,
             securityPin: securityPin,
+            pinHash: pinHash,
+            pinSalt: pinSalt,
+            pinIterations: pinIterations,
             biometricEnabled: biometricEnabled,
             lockDurationMinutes: lockDurationMinutes,
+            failedAttempts: failedAttempts,
+            nextRetryAt: nextRetryAt,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,

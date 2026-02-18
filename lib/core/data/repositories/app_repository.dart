@@ -12,7 +12,7 @@ import 'package:saito/core/data/models/legacy_user_progress.dart';
 /// typed access to the 3 domain models with cloud sync support.
 class AppRepository {
   final AppDatabase _db;
-  final SyncService? _sync;
+  final DriveSyncService? _sync;
   final SharedPreferences _prefs;
   final String _userId;
 
@@ -23,7 +23,7 @@ class AppRepository {
     required AppDatabase db,
     required String userId,
     required SharedPreferences prefs,
-    SyncService? sync,
+    DriveSyncService? sync,
   }) : _db = db,
        _userId = userId,
        _prefs = prefs,
@@ -70,23 +70,27 @@ class AppRepository {
             updatedAt: drift.Value(DateTime.now()),
           ),
         );
-    _sync?.pushWorkout().catchError((_) {});
+    _sync?.pushWorkout(_userId).catchError((_) {});
   }
 
   // ── App Preferences ───────────────────────────────────────
 
   Future<AppPreferences> getPreferences() async {
+    final onboardingComplete = _prefs.getBool(_onboardingKey) ?? false;
+
     final query = _db.select(_db.appPreferencesTable)
       ..where((t) => t.userId.equals(_userId));
     final row = await query.getSingleOrNull();
 
-    if (row == null) return AppPreferences();
+    if (row == null) {
+      return AppPreferences(onboardingComplete: onboardingComplete);
+    }
 
     return AppPreferences(
       audioEnabled: row.audioEnabled,
       hapticsEnabled: row.hapticsEnabled,
       themeMode: row.themeMode,
-      onboardingComplete: _prefs.getBool(_onboardingKey) ?? false,
+      onboardingComplete: onboardingComplete,
     );
   }
 
@@ -103,7 +107,7 @@ class AppRepository {
             updatedAt: drift.Value(DateTime.now()),
           ),
         );
-    _sync?.pushPreferences().catchError((_) {});
+    // Preferences are now local-only.
   }
 
   // ── Security Config ───────────────────────────────────────
@@ -118,8 +122,13 @@ class AppRepository {
     return SecurityConfig(
       securityEnabled: row.securityEnabled,
       securityPin: row.securityPin,
+      pinHash: row.pinHash,
+      pinSalt: row.pinSalt,
+      pinIterations: row.pinIterations,
       biometricEnabled: row.biometricEnabled,
       lockDurationMinutes: row.lockDurationMinutes,
+      failedAttempts: row.failedAttempts,
+      nextRetryAt: row.nextRetryAt,
     );
   }
 
@@ -131,12 +140,17 @@ class AppRepository {
             userId: _userId,
             securityEnabled: drift.Value(config.securityEnabled),
             securityPin: drift.Value(config.securityPin),
+            pinHash: drift.Value(config.pinHash),
+            pinSalt: drift.Value(config.pinSalt),
+            pinIterations: drift.Value(config.pinIterations),
             biometricEnabled: drift.Value(config.biometricEnabled),
             lockDurationMinutes: drift.Value(config.lockDurationMinutes),
+            failedAttempts: drift.Value(config.failedAttempts),
+            nextRetryAt: drift.Value(config.nextRetryAt),
             updatedAt: drift.Value(DateTime.now()),
           ),
         );
-    _sync?.pushSecurity().catchError((_) {});
+    // Security config is now local-only.
   }
 
   // ── Migration ─────────────────────────────────────────────

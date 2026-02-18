@@ -52,6 +52,8 @@ class SecurityPage extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => SecurityLockScreen(
+                    verifyPin: (pin) =>
+                        context.read<SecurityCubit>().verifyPin(pin),
                     isSetup: true,
                     bioEnabled: true,
                     onResult: (success) {

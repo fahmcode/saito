@@ -27,9 +27,14 @@ dependencies:
   material_symbols_icons: ^4.2709.0
   local_auth: ^2.3.0
   pin_code_fields: ^8.0.1
-  supabase_flutter: ^2.12.0
   drift_sqflite: ^2.0.1
   shared_preferences: ^2.2.3
+  google_sign_in: ^6.2.1
+  googleapis: ^13.1.0
+  googleapis_auth: ^1.6.0
+  http: ^1.2.1
+  crypto: ^3.0.3
+  cryptography: ^2.7.0
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +43,13 @@ dev_dependencies:
   hive_generator: ^2.0.1
   drift_dev: ^2.16.0
   build_runner: ^2.4.8
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/baki_logo.png"
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true

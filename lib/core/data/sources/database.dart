@@ -27,6 +27,12 @@ class WorkoutProgressTable extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+    'CREATE INDEX IF NOT EXISTS idx_workout_user ON workout_progress(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_workout_updated ON workout_progress(updated_at)',
+  ];
 }
 
 class AppPreferencesTable extends Table {
@@ -54,11 +60,16 @@ class SecurityConfigTable extends Table {
   TextColumn get userId => text()();
   BoolColumn get securityEnabled =>
       boolean().withDefault(const Constant(false))();
-  TextColumn get securityPin => text().nullable()();
+  TextColumn get securityPin => text().nullable()(); // legacy
+  TextColumn get pinHash => text().nullable()();
+  TextColumn get pinSalt => text().nullable()();
+  IntColumn get pinIterations => integer().nullable()();
   BoolColumn get biometricEnabled =>
       boolean().withDefault(const Constant(false))();
   IntColumn get lockDurationMinutes =>
       integer().withDefault(const Constant(0))();
+  IntColumn get failedAttempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextRetryAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -87,5 +98,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(securityConfigTable, securityConfigTable.pinHash);
+        await m.addColumn(securityConfigTable, securityConfigTable.pinSalt);
+        await m.addColumn(
+          securityConfigTable,
+          securityConfigTable.pinIterations,
+        );
+        await m.addColumn(
+          securityConfigTable,
+          securityConfigTable.failedAttempts,
+        );
+        await m.addColumn(securityConfigTable, securityConfigTable.nextRetryAt);
+      }
+    },
+  );
 }
